@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>农历节气日历-简道云日程同步</title>
+  <style>
+    :root{
+      --bg:#f7f8fa;--card:#ffffff;--text:#222;--text2:#666;--text3:#999;
+      --primary:#1677ff;--today:#1677ff;--select:#cce0ff;--border:#e5e7eb;--event:#fff0b3;
+    }
+    [data-theme="dark"]{
+      --bg:#121212;--card:#1e1e1e;--text:#eee;--text2:#bbb;--text3:#888;
+      --primary:#4096ff;--today:#1771d8;--select:#253b58;--border:#333;--event:#5c4a20;
+    }
+    *{box-sizing:border-box;margin:0;padding:0;font-family:system-ui,-apple-system}
+    body{background:var(--bg);color:var(--text);padding:16px;transition:0.3s}
+    .wrap{max-width:1000px;margin:0 auto}
+    .top-bar{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+    .theme-btn{padding:6px 12px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text);cursor:pointer}
+    .header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+    .btn{border:1px solid var(--border);background:var(--card);color:var(--text);width:44px;height:44px;border-radius:8px;font-size:18px;cursor:pointer}
+    .title{font-size:20px;font-weight:600}
+    .week-row{display:flex}
+    .week-item{flex:1;text-align:center;padding:10px 0;font-size:14px;color:var(--text2)}
+    .day-grid{display:flex;flex-wrap:wrap}
+    .day-item{width:14.2857%;text-align:center;padding:8px 2px;min-height:72px;border-radius:10px;cursor:pointer;border:1px solid transparent}
+    .day-item.empty{cursor:default}
+    .day-item.today{background:var(--today);color:#fff}
+    .day-item.active{background:var(--select)}
+    .day-item.has-ev{background:var(--event)}
+    .solar{font-size:16px}
+    .lunar{font-size:11px;color:var(--text3);margin-top:2px}
+    .festival{font-size:10px;color:#f5222d}
+    .solar-term{font-size:10px;color:#009688}
+    .ev-tag{font-size:9px;color:#d4380d;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .info-card{background:var(--card);border-radius:12px;padding:16px;margin:16px 0;border:1px solid var(--border)}
+    .query-box{background:var(--card);border-radius:12px;padding:16px;border:1px solid var(--border);margin-top:10px}
+    .query-row{display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
+    select,input{padding:8px 10px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--text)}
+    .qbtn{padding:8px 14px;background:var(--primary);color:#fff;border:none;border-radius:6px;cursor:pointer}
+    .result{margin-top:10px;padding:10px;border-radius:8px;background:var(--bg)}
+    .refresh-btn{margin-bottom:10px;padding:6px 12px;background:#009688;color:#fff;border:none;border-radius:6px;cursor:pointer}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top-bar">
+    <h2>农历节气日历（简道云日程同步）</h2>
+    <button class="theme-btn" id="themeBtn">切换深色</button>
+  </div>
+  <button class="refresh-btn" id="refresh">刷新简道云日程数据</button>
+  <div class="header">
+    <button class="btn" id="prev">◀</button>
+    <div class="title" id="ym"></div>
+    <button class="btn" id="next">▶</button>
+  </div>
+  <div class="week-row">
+    <div class="week-item">日</div><div class="week-item">一</div><div class="week-item">二</div><div class="week-item">三</div>
+    <div class="week-item">四</div><div class="week-item">五</div><div class="week-item">六</div>
+  </div>
+  <div class="day-grid" id="calendar"></div>
+  <div class="info-card" id="infoCard" style="display:none"><div id="infoText"></div></div>
+  <div class="query-box">
+    <h4>公历 ↔ 农历互查</h4>
+    <div class="query-row">
+      <select id="qType">
+        <option value="s2l">公历查农历</option><option value="l2s">农历查公历</option>
+      </select>
+      <input type="number" id="qY" placeholder="年" value="2026">
+      <input type="number" id="qM" placeholder="月" value="8">
+      <input type="number" id="qD" placeholder="日" value="9">
+      <button class="qbtn" id="doQuery">查询</button>
+    </div>
+    <div class="result" id="queryResult"></div>
+  </div>
+</div>
+<script>
+// ========== 1. 简道云API配置【这里修改成你自己的参数】 ==========
+const JDY_CONFIG = {
+  API_KEY: "QM6XTmsa2s2h3nByBkDIc1zmmBNSB1mb938E5999123010aDeEfEdDfC6B04aCfE",
+  APP_ID: "6738d31983d95dbc550e89e0",
+  ENTRY_ID: "6a7810d25a936c1b05ed4e17",
+  dateField: "宴席日期", // 表单日期字段名称
+  titleField: "预定情况"     // 表单标题字段名称
+};
+// CORS跨域公共代理（免费可用，解决浏览器跨域报错）
+const PROXY_URL = "https://corsproxy.io/?";
+const JDY_API_BASE = "https://api.jiandaoyun.com/api/v5/app";
+
+// 全局存储简道云日程
+let eventData = [];
+// ========== 农历核心计算库（保留原有完整农历、节气逻辑） ==========
+const lunarInfo = [0x04bd8,0x04ae0,0x0a570,0x054d5,0x0d260,0x0d950,0x16554,0x056a0,0x09ad0,0x055d2,
+0x04ae0,0x0a5b6,0x0a4d0,0x0d250,0x1d255,0x0b540,0x0d6a0,0x0ada2,0x095b0,0x14977,
+0x04970,0x0a4b0,0x0b4b5,0x06a50,0x06d40,0x1ab54,0x02b60,0x09570,0x052f2,0x04970,
+0x06566,0x0d4a0,0x0ea50,0x06e95,0x05ad0,0x02b60,0x186e3,0x092e0,0x1c8d7,0x0c950,
+0x0d4a0,0x1d8a6,0x0b550,0x056a0,0x1a5b4,0x025d0,0x092d0,0x0d2b2,0x0a950,0x0b557,
+0x06ca0,0x0b550,0x15355,0x04da0,0x0a5d0,0x14573,0x052d0,0x0a9a8,0x0e950,0x06aa0,
+0x0aea6,0x0ab50,0x04b60,0x0aae4,0x0a570,0x05260,0x0f263,0x0d950,0x05b57,0x056a0,
+0x096d0,0x04dd5,0x04ad0,0x0a4d0,0x0d4d4,0x0d250,0x0d558,0x0b540,0x0b5a0,0x195a6,
+0x095b0,0x049b0,0x0a974,0x0a4b0,0x0aa50,0x1b252,0x06d20,0x0ada0];
+const Gan = ["甲","乙","丙","丁","戊","己","庚","辛","壬","癸"];
+const Zhi = ["子","丑","寅","卯","辰","巳","午","未","申","酉","戌","亥"];
+const lunarMonthText = ["正","二","三","四","五","六","七","八","九","十","冬","腊"];
+const lunarDayText = ["初一","初二","初三","初四","初五","初六","初七","初八","初九","初十",
+"十一","十二","十三","十四","十五","十六","十七","十八","十九","二十",
+"廿一","廿二","廿三","廿四","廿五","廿六","廿七","廿八","廿九","三十"];
+const solarTermName = ["小寒","大寒","立春","雨水","惊蛰","春分","清明","谷雨","立夏","小满","芒种","夏至","小暑","大暑","立秋","处暑","白露","秋分","寒露","霜降","立冬","小雪","大雪","冬至"];
+const sTermInfo = [0,21208,42467,63836,85337,107014,128867,150921,173149,195551,218072,240693,263343,285989,308563,331033,353350,375494,397447,419210,440795,462224,483532,504758];
+const holidayMap = {"1-1":"元旦","5-1":"劳动节","5-2":"劳动节","5-3":"劳动节","10-1":"国庆节","10-2":"国庆节","10-3":"国庆节","10-4":"国庆节","10-5":"国庆节","10-6":"国庆节","10-7":"国庆节","1-29":"春节","1-30":"春节","2-1":"春节","2-2":"春节","2-3":"春节","4-4":"清明节","6-10":"端午节","9-17":"中秋节"};
+
+function getGanZhiYear(y){ return Gan[(y-4)%10]+Zhi[(y-4)%12]; }
+function getLeapMonth(y){ return lunarInfo[y-1900] & 0xf; }
+function getLeapDays(y){ const lm=getLeapMonth(y); return lm?((lunarInfo[y-1900]&0x10000)?30:29):0; }
+function getLunarMonthDays(y,m){ return (lunarInfo[y-1900] & (0x10000>>m))?30:29; }
+function getLunarYearDays(y){ let sum=348;for(let i=0x8000;i>0x8;i>>=1) sum+= (lunarInfo[y-1900]&i)?1:0; return sum+getLeapDays(y); }
+function solarToLunar(y,m,d){
+  const base=new Date(1900,0,31);
+  const obj=new Date(y,m-1,d);
+  let offset=Math.floor((obj-base)/86400000);
+  let ly=1900;
+  while(ly<2100&&offset>0){
+    const yd=getLunarYearDays(ly);
+    if(offset<=yd)break;offset-=yd;ly++;
+  }
+  let lm=1,isLeap=false;
+  const leapM=getLeapMonth(ly);
+  let md;
+  while(lm<=12&&offset>0){
+    if(leapM>0&&lm===leapM+1&&!isLeap){ lm--;isLeap=true;md=getLeapDays(ly); }
+    else { md=getLunarMonthDays(ly,lm); }
+    if(offset<=md)break; offset-=md; isLeap=false; lm++;
+  }
+  return {year:ly,month:lm,day:offset,isLeap};
+}
+function lunarToSolar(ly,lm,ld,isLeap){
+  const base=new Date(1900,0,31);
+  let offset=0;
+  for(let y=1900;y<ly;y++) offset+=getLunarYearDays(y);
+  const leapM=getLeapMonth(ly);
+  for(let m=1;m<lm;m++){
+    offset+=getLunarMonthDays(ly,m);
+    if(leapM>0&&m===leapM) offset+=getLeapDays(ly);
+  }
+  if(isLeap&&leapM===lm) offset+=getLeapDays(ly);
+  else if(leapM>0&&lm>leapM) offset+=getLeapDays(ly);
+  offset+= (ld-1);
+  const res=new Date(base.getTime()+offset*86400000);
+  return {y:res.getFullYear(),m:res.getMonth()+1,d:res.getDate()};
+}
+function getSolarTerm(y,n){
+  const base=new Date(1900,0,6,2,5,0);
+  const ms=base.getTime()+y*31556925974.7+(sTermInfo[n]*60000);
+  return new Date(ms);
+}
+function getYearAllSolarTerm(y){
+  const arr=[];
+  for(let i=0;i<24;i++){
+    const dt=getSolarTerm(y,i);
+    arr.push({name:solarTermName[i],y:dt.getFullYear(),m:dt.getMonth()+1,d:dt.getDate()})
+  }
+  return arr;
+}
+// ========== 2. 简道云API拉取日程核心函数 ==========
+async function fetchJdyEvents(){
+  const url = `${PROXY_URL}${JDY_API_BASE}/${JDY_CONFIG.APP_ID}/entry/${JDY_CONFIG.ENTRY_ID}/data/list`;
+  try{
+    const res = await fetch(url,{
+      method:"POST",
+      headers:{
+        "Authorization":`Bearer ${JDY_CONFIG.API_KEY}`,
+        "Content-Type":"application/json"
+      },
+      body:JSON.stringify({limit:1000}) // 单次最多拉1000条
+    });
+    const json = await res.json();
+    if(json.code === 0 && json.data.list){
+      // 格式化数据为 {date:"YYYY-MM-DD", title:"xxx"}
+      eventData = json.data.list.map(item=>{
+        const rawDate = item.data[JDY_CONFIG.dateField];
+        return {
+          date: rawDate ? rawDate.split(" ")[0] : "",
+          title: item.data[JDY_CONFIG.titleField] || "无标题"
+        }
+      }).filter(item=>item.date);
+      renderCalendar();
+      alert("日程刷新成功！");
+    }else{
+      alert("拉取数据失败："+json.msg);
+    }
+  }catch(err){
+    alert("网络/跨域错误："+err.message+"\n检查API Key、APP_ID、ENTRY_ID是否正确");
+    console.error(err);
+  }
+}
+// ========== UI日历渲染逻辑 ==========
+let currentYear,currentMonth;
+let selectItem=null;
+const $=s=>document.querySelector(s);
+const calendarEl=$("#calendar");
+const ymEl=$("#ym");
+const infoCard=$("#infoCard");
+const infoText=$("#infoText");
+function init(){
+  const now=new Date();
+  currentYear=now.getFullYear();
+  currentMonth=now.getMonth()+1;
+  renderCalendar();
+  bindEvent();
+  // 页面加载自动拉取简道云日程
+  fetchJdyEvents();
+}
+function renderCalendar(){
+  calendarEl.innerHTML="";
+  ymEl.innerText=`${currentYear}年${currentMonth}月`;
+  const first=new Date(currentYear,currentMonth-1,1);
+  const weekStart=first.getDay();
+  const totalDay=new Date(currentYear,currentMonth,0).getDate();
+  const today=new Date();
+  const ty=today.getFullYear(),tm=today.getMonth()+1,td=today.getDate();
+  const terms=getYearAllSolarTerm(currentYear);
+  for(let i=0;i<weekStart;i++){
+    const div=document.createElement("div");
+    div.className="day-item empty";
+    calendarEl.appendChild(div);
+  }
+  for(let d=1;d<=totalDay;d++){
+    const div=document.createElement("div");
+    const lunar=solarToLunar(currentYear,currentMonth,d);
+    let lunarStr;
+    if(lunar.isLeap) lunarStr="闰"+lunarMonthText[lunar.month-1]+lunarDayText[lunar.day-1];
+    else if(lunar.day===1) lunarStr=lunarMonthText[lunar.month-1]+"月";
+    else lunarStr=lunarDayText[lunar.day-1];
+    const isToday=(ty===currentYear&&tm===currentMonth&&td===d);
+    const isSelect=selectItem&&selectItem.y===currentYear&&selectItem.m===currentMonth&&selectItem.d===d;
+    const dateStr=`${currentYear}-${String(currentMonth).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+    const match=eventData.find(x=>x.date===dateStr);
+    div.className="day-item";
+    if(isToday) div.classList.add("today");
+    if(isSelect) div.classList.add("active");
+    if(match) div.classList.add("has-ev");
+    let festivalText="";
+    const key=`${currentMonth}-${d}`;
+    if(holidayMap[key]) festivalText=holidayMap[key];
+    let termText="";
+    const findTerm=terms.find(t=>t.m===currentMonth&&t.d===d);
+    if(findTerm) termText=findTerm.name;
+    let evHtml=match?`<div class="ev-tag">${match.title}</div>`:"";
+    div.innerHTML=`
+      <div class="solar">${d}</div>
+      <div class="lunar">${lunarStr}</div>
+      ${festivalText?`<div class="festival">${festivalText}</div>`:""}
+      ${termText?`<div class="solar-term">${termText}</div>`:""}${evHtml}
+    `;
+    div.dataset.y=currentYear;div.dataset.m=currentMonth;div.dataset.d=d;
+    div.dataset.lunar=JSON.stringify(lunar);
+    div.onclick=()=>clickDay(div);
+    calendarEl.appendChild(div);
+  }
+}
+function clickDay(el){
+  const y=Number(el.dataset.y);
+  const m=Number(el.dataset.m);
+  const d=Number(el.dataset.d);
+  const lunar=JSON.parse(el.dataset.lunar);
+  selectItem={y,m,d,lunar};
+  const weekArr=["日","一","二","三","四","五","六"];
+  const w=new Date(y,m-1,d).getDay();
+  const gz=getGanZhiYear(lunar.year);
+  let lunarDisplay=lunar.isLeap?`闰${lunarMonthText[lunar.month-1]}月${lunarDayText[lunar.day-1]}`:`${lunarMonthText[lunar.month-1]}月${lunarDayText[lunar.day-1]}`;
+  infoCard.style.display="block";
+  infoText.innerHTML=`
+    <div>公历：${y}-${m}-${d} 星期${weekArr[w]}</div>
+    <div>农历：${gz}年 ${lunarDisplay}</div>
+    <div>日程：${eventData.filter(x=>x.date==`${y}-${String(m).padStart(2,"0")}-${String(d).padStart(2,"0")}`).map(i=>i.title).join("、")||"无日程"}</div>
+  `;
+  renderCalendar();
+}
+function bindEvent(){
+  $("#prev").onclick=()=>{
+    currentMonth--;if(currentMonth<1){ currentMonth=12; currentYear--; }
+    selectItem=null; infoCard.style.display="none"; renderCalendar();
+  }
+  $("#next").onclick=()=>{
+    currentMonth++;if(currentMonth>12){ currentMonth=1; currentYear=currentYear+1; }
+    selectItem=null; infoCard.style.display="none"; renderCalendar();
+  }
+  $("#refresh").onclick=fetchJdyEvents;
+  const themeBtn=$("#themeBtn");
+  themeBtn.onclick=()=>{
+    const html=document.documentElement;
+    html.hasAttribute("data-theme")?(html.removeAttribute("data-theme"),themeBtn.innerText="切换深色"):(html.setAttribute("data-theme","dark"),themeBtn.innerText="切换浅色");
+  }
+  $("#doQuery").onclick=()=>{
+    const type=$("#qType").value;
+    const qy=Number($("#qY").value);
+    const qm=Number($("#qM").value);
+    const qd=Number($("#qD").value);
+    const resEl=$("#queryResult");
+    try{
+      if(type=="s2l"){
+        const l=solarToLunar(qy,qm,qd);
+        const gz=getGanZhiYear(l.year);
+        const lunarStr=l.isLeap?`闰${lunarMonthText[l.month-1]}月${lunarDayText[l.day-1]}`:`${lunarMonthText[l.month-1]}月${lunarDayText[l.day-1]}`;
+        resEl.innerText=`公历 ${qy}-${qm}-${qd} → 农历 ${gz}年 ${lunarStr}`;
+      }else{
+        const s=lunarToSolar(qy,qm,qd,false);
+        resEl.innerText=`农历 ${qy}年${qm}月${qd}日 → 公历 ${s.y}-${s.m}-${s.d}`;
+      }
+    }catch(e){resEl.innerText="输入日期无效";}
+  }
+}
+init();
+</script>
+</body>
+</html>
