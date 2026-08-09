@@ -3,15 +3,31 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>农历节气日历-简道云日程同步</title>
+  <title>宴席农历日历</title>
   <style>
     :root{
-      --bg:#f7f8fa;--card:#ffffff;--text:#222;--text2:#666;--text3:#999;
-      --primary:#1677ff;--today:#1677ff;--select:#cce0ff;--border:#e5e7eb;--event:#fff0b3;
+      --bg:#f7f8fa;
+      --card:#ffffff;
+      --text:#222;
+      --text2:#666;
+      --text3:#999;
+      --primary:#1677ff;
+      --today:#1677ff;
+      --select:#cce0ff;
+      --border:#e5e7eb;
+      --event:#fff0b3;
     }
     [data-theme="dark"]{
-      --bg:#121212;--card:#1e1e1e;--text:#eee;--text2:#bbb;--text3:#888;
-      --primary:#4096ff;--today:#1771d8;--select:#253b58;--border:#333;--event:#5c4a20;
+      --bg:#121212;
+      --card:#1e1e1e;
+      --text:#eee;
+      --text2:#bbb;
+      --text3:#888;
+      --primary:#4096ff;
+      --today:#1771d8;
+      --select:#253b58;
+      --border:#333;
+      --event:#5c4a20;
     }
     *{box-sizing:border-box;margin:0;padding:0;font-family:system-ui,-apple-system}
     body{background:var(--bg);color:var(--text);padding:16px;transition:0.3s}
@@ -46,10 +62,10 @@
 <body>
 <div class="wrap">
   <div class="top-bar">
-    <h2>农历节气日历（简道云日程同步）</h2>
+    <h2>宴席农历节气日历</h2>
     <button class="theme-btn" id="themeBtn">切换深色</button>
   </div>
-  <button class="refresh-btn" id="refresh">刷新简道云日程数据</button>
+  <button class="refresh-btn" id="refresh">刷新宴席数据</button>
   <div class="header">
     <button class="btn" id="prev">◀</button>
     <div class="title" id="ym"></div>
@@ -76,14 +92,7 @@
   </div>
 </div>
 <script>
-// ========== 1. 简道云API配置【这里修改成你自己的参数】 ==========
-
-  // 注释旧公共代理
-// const PROXY_URL = "https://corsproxy.io/?";
-// 替换成你自己的Vercel代理域名，示例格式
-const PROXY_URL = "https://xxx.vercel.app/proxy?url=";
-
-const JDY_API_BASE = "https://api.jiandaoyun.com/api/v5/app";
+// ========== 简道云固定配置（无需修改） ==========
 const JDY_CONFIG = {
   API_KEY: "QMX6XTmsa2s2h3nBy8kDIc1zmmBNSB1mb938E5999123010aDeEfEdDFC6804aCfE",
   APP_ID: "6738d31983d95dbc550e89e0",
@@ -91,14 +100,12 @@ const JDY_CONFIG = {
   dateField: "宴席日期",
   titleField: "预定情况"
 };
-
-// CORS跨域公共代理（免费可用，解决浏览器跨域报错）
-const PROXY_URL = "https://api.allorigins.win/raw?url=";
+// ========== 【唯一需要修改的地方】部署Vercel后替换域名 ==========
+const PROXY_URL = "https://xxx.vercel.app/proxy?url=";
 const JDY_API_BASE = "https://api.jiandaoyun.com/api/v5/app";
 
-// 全局存储简道云日程
 let eventData = [];
-// ========== 农历核心计算库（保留原有完整农历、节气逻辑） ==========
+// ========== 农历核心计算库（完整内置） ==========
 const lunarInfo = [0x04bd8,0x04ae0,0x0a570,0x054d5,0x0d260,0x0d950,0x16554,0x056a0,0x09ad0,0x055d2,
 0x04ae0,0x0a5b6,0x0a4d0,0x0d250,0x1d255,0x0b540,0x0d6a0,0x0ada2,0x095b0,0x14977,
 0x04970,0x0a4b0,0x0b4b5,0x06a50,0x06d40,0x1ab54,0x02b60,0x09570,0x052f2,0x04970,
@@ -170,39 +177,38 @@ function getYearAllSolarTerm(y){
   }
   return arr;
 }
-// ========== 2. 简道云API拉取日程核心函数 ==========
+// ========== 拉取简道云宴席数据（已适配私有Vercel代理） ==========
 async function fetchJdyEvents(){
-  const url = `${PROXY_URL}${JDY_API_BASE}/${JDY_CONFIG.APP_ID}/entry/${JDY_CONFIG.ENTRY_ID}/data/list`;
+  const url = `${JDY_API_BASE}/${JDY_CONFIG.APP_ID}/entry/${JDY_CONFIG.ENTRY_ID}/data/list`;
   try{
-    const res = await fetch(url,{
+    const resp = await fetch(PROXY_URL + encodeURIComponent(url),{
       method:"POST",
       headers:{
         "Authorization":`Bearer ${JDY_CONFIG.API_KEY}`,
         "Content-Type":"application/json"
       },
-      body:JSON.stringify({limit:1000}) // 单次最多拉1000条
+      body:JSON.stringify({limit:1000})
     });
-    const json = await res.json();
+    const json = await resp.json();
     if(json.code === 0 && json.data.list){
-      // 格式化数据为 {date:"YYYY-MM-DD", title:"xxx"}
       eventData = json.data.list.map(item=>{
         const rawDate = item.data[JDY_CONFIG.dateField];
         return {
           date: rawDate ? rawDate.split(" ")[0] : "",
-          title: item.data[JDY_CONFIG.titleField] || "无标题"
+          title: item.data[JDY_CONFIG.titleField] || "无宴席"
         }
       }).filter(item=>item.date);
       renderCalendar();
-      alert("日程刷新成功！");
+      alert("宴席数据刷新成功！");
     }else{
-      alert("拉取数据失败："+json.msg);
+      alert("数据拉取失败："+(json.msg||"接口返回异常"));
     }
   }catch(err){
-    alert("网络/跨域错误："+err.message+"\n检查API Key、APP_ID、ENTRY_ID是否正确");
+    alert("网络请求异常："+err.message+"\n检查Vercel代理地址是否填写正确");
     console.error(err);
   }
 }
-// ========== UI日历渲染逻辑 ==========
+// ========== 日历渲染UI逻辑 ==========
 let currentYear,currentMonth;
 let selectItem=null;
 const $=s=>document.querySelector(s);
@@ -216,7 +222,6 @@ function init(){
   currentMonth=now.getMonth()+1;
   renderCalendar();
   bindEvent();
-  // 页面加载自动拉取简道云日程
   fetchJdyEvents();
 }
 function renderCalendar(){
@@ -278,10 +283,12 @@ function clickDay(el){
   const gz=getGanZhiYear(lunar.year);
   let lunarDisplay=lunar.isLeap?`闰${lunarMonthText[lunar.month-1]}月${lunarDayText[lunar.day-1]}`:`${lunarMonthText[lunar.month-1]}月${lunarDayText[lunar.day-1]}`;
   infoCard.style.display="block";
+  const dayStr=`${y}-${String(m).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+  const dayList = eventData.filter(x=>x.date===dayStr).map(i=>i.title).join("、")||"无宴席预定";
   infoText.innerHTML=`
     <div>公历：${y}-${m}-${d} 星期${weekArr[w]}</div>
     <div>农历：${gz}年 ${lunarDisplay}</div>
-    <div>日程：${eventData.filter(x=>x.date==`${y}-${String(m).padStart(2,"0")}-${String(d).padStart(2,"0")}`).map(i=>i.title).join("、")||"无日程"}</div>
+    <div>当日宴席：${dayList}</div>
   `;
   renderCalendar();
 }
