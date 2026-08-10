@@ -235,7 +235,7 @@ async function fetchJdyMonthEvents(y,m){
     };
     const resp=await fetch(WORKER_PROXY,{
       method:"POST",
-      headers:{"Content‑Type":"application/json"},
+      headers:{"Content-Type":"application/json"},
       body:JSON.stringify(payload)
     });
     const json=await resp.json();
