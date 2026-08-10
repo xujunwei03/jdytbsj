@@ -81,7 +81,7 @@
 <body>
 <div class="wrap">
   <div class="top-bar">
-    <h2>宴席农历节气日历</h2>
+    <h2>宴席农历日历</h2>
     <button class="theme-btn" id="themeBtn">切换深色</button>
   </div>
   <div>
@@ -198,11 +198,48 @@ const JDY_CONFIG = {
   dateField: "宴席日期",
   titleField: "预定情况"
 };
-// ========== 【唯一需要修改的地方】部署Vercel后替换域名 ==========
-const PROXY_URL = "https://jdytbsj.vercel.app/api/proxy?url=";
 const JDY_API_BASE = "https://api.jiandaoyun.com/api/v5/app";
 
 let eventData = [];
+// ========== 拉取简道云宴席数据（公共CORS代理，无需Vercel） ==========
+async function fetchJdyEvents(){
+  const CORS_PROXY = "https://corsproxy.io/?";
+  const originUrl = `${JDY_API_BASE}/${JDY_CONFIG.APP_ID}/entry/${JDY_CONFIG.ENTRY_ID}/data/list`;
+  const targetUrl = CORS_PROXY + encodeURIComponent(originUrl);
+
+  try{
+    const resp = await fetch(targetUrl,{
+      method:"POST",
+      headers:{
+        "Authorization":`Bearer ${JDY_CONFIG.API_KEY}`,
+        "Content-Type":"application/json"
+      },
+      body:JSON.stringify({limit:1000})
+    });
+
+    if(!resp.ok){
+      throw new Error(`HTTP ${resp.status}`);
+    }
+    const json = await resp.json();
+    if(json.code === 0 && json.data.list){
+      eventData = json.data.list.map(item=>{
+        const rawDate = item.data[JDY_CONFIG.dateField];
+        return {
+          date: rawDate ? rawDate.split(" ")[0] : "",
+          title: item.data[JDY_CONFIG.titleField] || "无宴席"
+        }
+      }).filter(item=>item.date);
+      renderCalendar();
+      alert("宴席数据刷新成功！");
+    }else{
+      alert("数据拉取失败："+(json.msg||"接口返回异常"));
+    }
+  }catch(err){
+    alert("网络请求异常："+err.message+"\n公共代理存在频率限制，短时间多次刷新容易失败");
+    console.error(err);
+  }
+}
+
 // ========== 农历核心计算库（完整内置） ==========
 const lunarInfo = [0x04bd8,0x04ae0,0x0a570,0x054d5,0x0d260,0x0d950,0x16554,0x056a0,0x09ad0,0x055d2,
 0x04ae0,0x0a5b6,0x0a4d0,0x0d250,0x1d255,0x0b540,0x0d6a0,0x0ada2,0x095b0,0x14977,
@@ -275,37 +312,7 @@ function getYearAllSolarTerm(y){
   }
   return arr;
 }
-// ========== 拉取简道云宴席数据（已适配私有Vercel代理） ==========
-async function fetchJdyEvents(){
-  const url = `${JDY_API_BASE}/${JDY_CONFIG.APP_ID}/entry/${JDY_CONFIG.ENTRY_ID}/data/list`;
-  try{
-    const resp = await fetch(PROXY_URL + encodeURIComponent(url),{
-      method:"POST",
-      headers:{
-        "Authorization":`Bearer ${JDY_CONFIG.API_KEY}`,
-        "Content-Type":"application/json"
-      },
-      body:JSON.stringify({limit:1000})
-    });
-    const json = await resp.json();
-    if(json.code === 0 && json.data.list){
-      eventData = json.data.list.map(item=>{
-        const rawDate = item.data[JDY_CONFIG.dateField];
-        return {
-          date: rawDate ? rawDate.split(" ")[0] : "",
-          title: item.data[JDY_CONFIG.titleField] || "无宴席"
-        }
-      }).filter(item=>item.date);
-      renderCalendar();
-      alert("宴席数据刷新成功！");
-    }else{
-      alert("数据拉取失败："+(json.msg||"接口返回异常"));
-    }
-  }catch(err){
-    alert("网络请求异常："+err.message+"\n检查Vercel代理地址是否填写正确");
-    console.error(err);
-  }
-}
+
 // ========== 日历渲染UI逻辑 ==========
 let currentYear,currentMonth;
 let selectItem=null;
