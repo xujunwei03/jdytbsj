@@ -92,6 +92,7 @@
     <button class="refresh-btn" id="refresh">刷新宴席数据</button>
     <span class="star-status" id="starStatus">星日期加载中...</span>
     <span class="star-status" id="loadStatus"></span>
+    <span class="star-status" id="cacheInfo"></span>
   </div>
   <div class="header">
     <button class="btn" id="prev">◀</button>
@@ -144,9 +145,36 @@ const JDY_CONFIG = {
 };
 const JDY_API_BASE = "https://api.jiandaoyun.com/api/v5/app";
 
+const LOCAL_STORAGE_KEY = "jdy_full_event_cache";
+
 let starDateMap = {};
-let eventData = [];
+/** 全部宴席缓存，全量拉取，切换月份直接过滤本地数组，不再请求接口 */
+let fullEventList = [];
 let loading = false;
+
+// ========== 本地缓存工具函数 ==========
+function saveEventCache(list){
+  localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify({
+    updateTime:Date.now(),
+    data:list
+  }));
+}
+function readEventCache(){
+  const str = localStorage.getItem(LOCAL_STORAGE_KEY);
+  if(!str) return null;
+  try{
+    return JSON.parse(str);
+  }catch(e){
+    return null;
+  }
+}
+//根据年月，从全量缓存过滤当月数据
+function getMonthEventFromCache(y,m){
+  const {start,end}=getMonthRange(y,m);
+  return fullEventList.filter(item=>{
+    return item.date >= start && item.date <= end;
+  })
+}
 
 // ========== 加载星日期Excel ==========
 async function loadStarExcel() {
@@ -206,47 +234,46 @@ function getMonthRange(y,m){
   return {start,end};
 }
 
-// ========== Worker代理，拉取简道云【当月】宴席数据 ==========
-async function fetchJdyMonthEvents(y,m){
+/**
+ * 全量拉取简道云全部数据（分页循环拉取所有记录）
+ * 点击【刷新宴席数据】触发，拉完存入localStorage本地缓存
+ */
+async function fetchJdyAllEvents(){
   if(loading) return;
   loading=true;
   const loadStatus=document.getElementById("loadStatus");
-  loadStatus.innerText="正在加载当月宴席...";
+  const cacheInfo=document.getElementById("cacheInfo");
+  loadStatus.innerText="正在全量拉取简道云所有宴席数据...";
+  let allList=[];
+  let pageIndex=1;
+  const pageSize=1000;
   try{
-    const {start,end}=getMonthRange(y,m);
-    const payload={
-      mode:"jiandao",
-      jdyUrl:`${JDY_API_BASE}/${JDY_CONFIG.APP_ID}/entry/${JDY_CONFIG.ENTRY_ID}/data/list`,
-      apiKey:JDY_CONFIG.API_KEY,
-      body:{
-        limit:1000,
-        filter:{
-          rel:"and",
-          cond:[
-            {
-              field:JDY_CONFIG.dateField,
-              type:"date",
-              op:"between",
-              val:[start,end]
-            }
-          ]
+    while(true){
+      const payload={
+        mode:"jiandao",
+        jdyUrl:`${JDY_API_BASE}/${JDY_CONFIG.APP_ID}/entry/${JDY_CONFIG.ENTRY_ID}/data/list`,
+        apiKey:JDY_CONFIG.API_KEY,
+        body:{
+          limit:pageSize,
+          page:pageIndex,
+          filter:null
         }
+      };
+      const resp = await fetch(WORKER_PROXY, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload)
+      });
+      const json=await resp.json();
+      if(json.code!==0){
+        throw new Error(json.msg||JSON.stringify(json));
       }
-    };
-    const resp = await fetch(WORKER_PROXY, {
-    method: "POST",
-    headers: {
-        "Content-Type": "application/json"
-    },
-    body: JSON.stringify(payload)
-});
-    const json=await resp.json();
-    if(json.code!==0){
-      alert("简道云拉取失败："+(json.msg||JSON.stringify(json)));
-      eventData=[];
-    }else{
       const list=json.data?.list||[];
-      eventData = list.map(item=>{
+      if(list.length===0) break;
+      //格式化每条记录
+      const formatList = list.map(item=>{
         const rawDate = item.data[JDY_CONFIG.dateField];
         return {
           date: rawDate ? rawDate.split(" ")[0] : "",
@@ -256,13 +283,24 @@ async function fetchJdyMonthEvents(y,m){
           title: item.data[JDY_CONFIG.titleField] || ""
         }
       }).filter(item=>item.date);
+      allList = allList.concat(formatList);
+      //判断是否还有下一页
+      const total = json.data?.total||0;
+      if(allList.length >= total) break;
+      pageIndex++;
     }
+    //全部拉取完成，赋值内存变量，存入本地缓存
+    fullEventList = allList;
+    saveEventCache(fullEventList);
+    const time = new Date().toLocaleString();
+    cacheInfo.innerText = `缓存更新:${time}`;
+    cacheInfo.style.color="#0e9f6e";
     renderCalendar();
-    loadStatus.innerText=`✅当月宴席${eventData.length}条`;
+    loadStatus.innerText=`✅已同步全部宴席${fullEventList.length}条`;
   }catch(err){
-    alert("请求异常："+err.message);
+    alert("全量拉取简道云失败："+err.message);
     console.error(err);
-    loadStatus.innerText="❌加载失败";
+    loadStatus.innerText="❌拉取失败";
   }finally{
     loading=false;
   }
@@ -354,14 +392,25 @@ async function init(){
   const now=new Date();
   currentYear=now.getFullYear();
   currentMonth=now.getMonth()+1;
+  //优先读取本地缓存
+  const cache = readEventCache();
+  if(cache && Array.isArray(cache.data)){
+    fullEventList = cache.data;
+    const timeStr = new Date(cache.updateTime).toLocaleString();
+    document.getElementById("cacheInfo").innerText = `本地缓存:${timeStr}`;
+    document.getElementById("cacheInfo").style.color="#0e9f6e";
+  }
   renderCalendar();
   bindEvent();
   await loadStarExcel();
-  await fetchJdyMonthEvents(currentYear,currentMonth);
+  //页面初始化不自动请求接口，需要手动点刷新拉取最新
   renderCalendar();
 }
 
 function renderCalendar(){
+  //从全量缓存过滤当月数据
+  const eventData = getMonthEventFromCache(currentYear,currentMonth);
+
   calendarEl.innerHTML="";
   ymEl.innerText=`${currentYear}年${currentMonth}月`;
   const first=new Date(currentYear,currentMonth-1,1);
@@ -483,17 +532,18 @@ function bindEvent(){
     currentMonth--;if(currentMonth<1){ currentMonth=12; currentYear--; }
     selectItem=null; infoCard.style.display="none";
     renderCalendar();
-    await fetchJdyMonthEvents(currentYear,currentMonth);
+    //切换月份不再请求接口，直接读取本地缓存
   }
   $("#next").onclick=async ()=>{
     if(loading)return;
     currentMonth++;if(currentMonth>12){ currentMonth=1; currentYear=currentYear+1; }
     selectItem=null; infoCard.style.display="none";
     renderCalendar();
-    await fetchJdyMonthEvents(currentYear,currentMonth);
+    //切换月份不再请求接口，直接读取本地缓存
   }
+  //点击刷新，执行全量拉取简道云全部记录，更新本地缓存
   $("#refresh").onclick=async ()=>{
-    await fetchJdyMonthEvents(currentYear,currentMonth);
+    await fetchJdyAllEvents();
   };
   const themeBtn=$("#themeBtn");
   themeBtn.onclick=()=>{
