@@ -51,7 +51,7 @@
     .week-row{display:flex}
     .week-item{flex:1;text-align:center;padding:10px 0;font-size:14px;color:var(--text2)}
     .day-grid{display:flex;flex-wrap:wrap}
-    .day-item{width:14.2857%;text-align:center;padding:8px 2px;min-height:72px;border-radius:10px;cursor:pointer;border:1px solid transparent}
+    .day-item{width:14.2857%;text-align:center;padding:8px 2px;min-height:72px;border-radius:10px;cursor:pointer;border:1px solid transparent;position:relative}
     .day-item.empty{cursor:default}
     .day-item.today{background:var(--today);color:#fff}
     .day-item.active{background:var(--select)}
@@ -68,6 +68,8 @@
     .solar-term{font-size:10px;color:#009688}
     .ev-tag{font-size:9px;color:#d4380d;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .star-tag{font-size:9px;font-weight:bold;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    /*宴席数量角标*/
+    .ev-badge{position:absolute;top:2px;right:2px;background:#dc2626;color:#fff;font-size:10px;border-radius:999px;padding:1px 4px;min-width:16px;text-align:center}
     .info-card{background:var(--card);border-radius:12px;padding:16px;margin:16px 0;border:1px solid var(--border)}
     .query-box{background:var(--card);border-radius:12px;padding:16px;border:1px solid var(--border);margin-top:10px}
     .query-row{display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
@@ -76,6 +78,8 @@
     .result{margin-top:10px;padding:10px;border-radius:8px;background:var(--bg)}
     .refresh-btn{margin-bottom:10px;padding:6px 12px;background:#009688;color:#fff;border:none;border-radius:6px;cursor:pointer}
     .star-status{font-size:12px;color:var(--text3);margin-left:8px;}
+    .detail-item{padding:6px 0;border-bottom:1px solid var(--border);text-align:left;font-size:14px}
+    .detail-item:last-child{border-bottom:none}
   </style>
 </head>
 <body>
@@ -87,6 +91,7 @@
   <div>
     <button class="refresh-btn" id="refresh">刷新宴席数据</button>
     <span class="star-status" id="starStatus">星日期加载中...</span>
+    <span class="star-status" id="loadStatus"></span>
   </div>
   <div class="header">
     <button class="btn" id="prev">◀</button>
@@ -115,40 +120,46 @@
 </div>
 <script>
 // ============================================================
-// 【星日期Excel配置】修改这里切换数据源
+// 【配置区】
 // ============================================================
+const WORKER_PROXY = "https://xxx.banquet-proxy.workers.dev"; //替换为你的Worker地址
+
 const STAR_EXCEL_CONFIG = {
-  // 方式1：本地同目录文件（默认，把star.xlsx放到和index.html同一个文件夹）
   url: "./star.xlsx",
-  // 方式2：在线Excel链接，替换上面的url，例如：
-  // url: "https://raw.githubusercontent.com/xujunwei03/jdytbsj/main/star.xlsx",
-  sheetName: "",  // 工作表名，留空自动取第一个sheet
-  dateColumn: 0,  // 日期在第几列（0=A列，1=B列，以此类推）
-  starColumn: 1,  // 星日期在第几列（0=A列，1=B列）
-  skipHeader: true // 是否跳过第一行表头
+  sheetName: "",
+  dateColumn: 0,
+  starColumn: 1,
+  skipHeader: true
 };
 
-let starDateMap = {}; // 星日期数据，从Excel加载
+const JDY_CONFIG = {
+  API_KEY: "QMX6XTmsa2s2h3nBy8kDIc1zmmBNSB1mb938E5999123010aDeEfEdDFC6804aCfE",
+  APP_ID: "6738d31983d95dbc550e89e0",
+  ENTRY_ID: "6a5592dfee45842efb1d91f6",
+  dateField: "宴席日期",
+  hallField:"宴会厅",
+  customerField:"客户名称",
+  tableField:"桌数",
+  titleField: "预定情况"
+};
+const JDY_API_BASE = "https://api.jiandaoyun.com/api/v5/app";
+
+let starDateMap = {};
+let eventData = [];
+let loading = false;
 
 // ========== 加载星日期Excel ==========
 async function loadStarExcel() {
   const statusEl = document.getElementById("starStatus");
   try {
-    // 1. 下载Excel文件
     const resp = await fetch(STAR_EXCEL_CONFIG.url);
     if (!resp.ok) throw new Error("HTTP " + resp.status);
     const buf = await resp.arrayBuffer();
-
-    // 2. 解析Excel
     const wb = XLSX.read(buf, { type: "array", cellDates: true });
     const sheetName = STAR_EXCEL_CONFIG.sheetName || wb.SheetNames[0];
     const sheet = wb.Sheets[sheetName];
     if (!sheet) throw new Error("找不到工作表：" + sheetName);
-
-    // 3. 转成二维数组
     const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false });
-
-    // 4. 组装成 { "yyyy-MM-dd": "星旺日" } 格式
     const map = {};
     const startIdx = STAR_EXCEL_CONFIG.skipHeader ? 1 : 0;
     for (let i = startIdx; i < rows.length; i++) {
@@ -157,8 +168,6 @@ async function loadStarExcel() {
       let dateVal = row[STAR_EXCEL_CONFIG.dateColumn];
       const starVal = (row[STAR_EXCEL_CONFIG.starColumn] || "").toString().trim();
       if (!dateVal || !starVal) continue;
-
-      // 统一日期格式为 yyyy-MM-dd
       let dateStr;
       if (dateVal instanceof Date) {
         dateStr = dateVal.getFullYear() + "-"
@@ -166,7 +175,6 @@ async function loadStarExcel() {
           + String(dateVal.getDate()).padStart(2, "0");
       } else {
         dateVal = dateVal.toString().trim();
-        // 支持 2027/1/1 和 2027-01-01 两种格式
         const parts = dateVal.split(/[\/\-]/);
         if (parts.length === 3) {
           dateStr = parts[0] + "-" + parts[1].padStart(2, "0") + "-" + parts[2].padStart(2, "0");
@@ -176,7 +184,6 @@ async function loadStarExcel() {
       }
       map[dateStr] = starVal;
     }
-
     starDateMap = map;
     const count = Object.keys(map).length;
     statusEl.innerText = `星日期已加载（${count}条）`;
@@ -190,53 +197,72 @@ async function loadStarExcel() {
   }
 }
 
-// ========== 简道云固定配置（无需修改） ==========
-const JDY_CONFIG = {
-  API_KEY: "QMX6XTmsa2s2h3nBy8kDIc1zmmBNSB1mb938E5999123010aDeEfEdDFC6804aCfE",
-  APP_ID: "6738d31983d95dbc550e89e0",
-  ENTRY_ID: "6a5592dfee45842efb1d91f6",
-  dateField: "宴席日期",
-  titleField: "预定情况"
-};
-const JDY_API_BASE = "https://api.jiandaoyun.com/api/v5/app";
+//获取当月起止 yyyy‑MM‑dd
+function getMonthRange(y,m){
+  const first=new Date(y,m-1,1);
+  const last=new Date(y,m,0);
+  const start=`${first.getFullYear()}-${String(first.getMonth()+1).padStart(2,'0')}-${String(first.getDate()).padStart(2,'0')}`;
+  const end=`${last.getFullYear()}-${String(last.getMonth()+1).padStart(2,'0')}-${String(last.getDate()).padStart(2,'0')}`;
+  return {start,end};
+}
 
-let eventData = [];
-// ========== 拉取简道云宴席数据（公共CORS代理，无需Vercel） ==========
-async function fetchJdyEvents(){
-  const CORS_PROXY = "https://corsproxy.io/?";
-  const originUrl = `${JDY_API_BASE}/${JDY_CONFIG.APP_ID}/entry/${JDY_CONFIG.ENTRY_ID}/data/list`;
-  const targetUrl = CORS_PROXY + encodeURIComponent(originUrl);
-
+// ========== Worker代理，拉取简道云【当月】宴席数据 ==========
+async function fetchJdyMonthEvents(y,m){
+  if(loading) return;
+  loading=true;
+  const loadStatus=document.getElementById("loadStatus");
+  loadStatus.innerText="正在加载当月宴席...";
   try{
-    const resp = await fetch(targetUrl,{
+    const {start,end}=getMonthRange(y,m);
+    const payload={
+      mode:"jiandao",
+      jdyUrl:`${JDY_API_BASE}/${JDY_CONFIG.APP_ID}/entry/${JDY_CONFIG.ENTRY_ID}/data/list`,
+      apiKey:JDY_CONFIG.API_KEY,
+      body:{
+        limit:1000,
+        filter:{
+          rel:"and",
+          cond:[
+            {
+              field:JDY_CONFIG.dateField,
+              type:"date",
+              op:"between",
+              val:[start,end]
+            }
+          ]
+        }
+      }
+    };
+    const resp=await fetch(WORKER_PROXY,{
       method:"POST",
-      headers:{
-        "Authorization":`Bearer ${JDY_CONFIG.API_KEY}`,
-        "Content-Type":"application/json"
-      },
-      body:JSON.stringify({limit:1000})
+      headers:{"Content‑Type":"application/json"},
+      body:JSON.stringify(payload)
     });
-
-    if(!resp.ok){
-      throw new Error(`HTTP ${resp.status}`);
-    }
-    const json = await resp.json();
-    if(json.code === 0 && json.data.list){
-      eventData = json.data.list.map(item=>{
+    const json=await resp.json();
+    if(json.code!==0){
+      alert("简道云拉取失败："+(json.msg||JSON.stringify(json)));
+      eventData=[];
+    }else{
+      const list=json.data?.list||[];
+      eventData = list.map(item=>{
         const rawDate = item.data[JDY_CONFIG.dateField];
         return {
           date: rawDate ? rawDate.split(" ")[0] : "",
-          title: item.data[JDY_CONFIG.titleField] || "无宴席"
+          hall:item.data[JDY_CONFIG.hallField]||"",
+          customer:item.data[JDY_CONFIG.customerField]||"",
+          table:item.data[JDY_CONFIG.tableField]||"",
+          title: item.data[JDY_CONFIG.titleField] || ""
         }
       }).filter(item=>item.date);
-      renderCalendar();
-      alert("宴席数据刷新成功！");
-    }else{
-      alert("数据拉取失败："+(json.msg||"接口返回异常"));
     }
+    renderCalendar();
+    loadStatus.innerText=`✅当月宴席${eventData.length}条`;
   }catch(err){
-    alert("网络请求异常："+err.message+"\n公共代理存在频率限制，短时间多次刷新容易失败");
+    alert("请求异常："+err.message);
     console.error(err);
+    loadStatus.innerText="❌加载失败";
+  }finally{
+    loading=false;
   }
 }
 
@@ -321,16 +347,18 @@ const calendarEl=$("#calendar");
 const ymEl=$("#ym");
 const infoCard=$("#infoCard");
 const infoText=$("#infoText");
+
 async function init(){
   const now=new Date();
   currentYear=now.getFullYear();
   currentMonth=now.getMonth()+1;
   renderCalendar();
   bindEvent();
-  // 并行加载星日期和宴席数据
-  loadStarExcel().then(()=>renderCalendar());
-  fetchJdyEvents();
+  await loadStarExcel();
+  await fetchJdyMonthEvents(currentYear,currentMonth);
+  renderCalendar();
 }
+
 function renderCalendar(){
   calendarEl.innerHTML="";
   ymEl.innerText=`${currentYear}年${currentMonth}月`;
@@ -340,11 +368,21 @@ function renderCalendar(){
   const today=new Date();
   const ty=today.getFullYear(),tm=today.getMonth()+1,td=today.getDate();
   const terms=getYearAllSolarTerm(currentYear);
+
+  //按日期分组
+  const groupMap={};
+  for(const ev of eventData){
+    if(!ev.date)continue;
+    if(!groupMap[ev.date])groupMap[ev.date]=[];
+    groupMap[ev.date].push(ev);
+  }
+
   for(let i=0;i<weekStart;i++){
     const div=document.createElement("div");
     div.className="day-item empty";
     calendarEl.appendChild(div);
   }
+
   for(let d=1;d<=totalDay;d++){
     const div=document.createElement("div");
     const lunar=solarToLunar(currentYear,currentMonth,d);
@@ -355,14 +393,14 @@ function renderCalendar(){
     const isToday=(ty===currentYear&&tm===currentMonth&&td===d);
     const isSelect=selectItem&&selectItem.y===currentYear&&selectItem.m===currentMonth&&selectItem.d===d;
     const dateStr=`${currentYear}-${String(currentMonth).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
-    const match=eventData.find(x=>x.date===dateStr);
+    const dayEvList=groupMap[dateStr]||[];
+    const dayCount=dayEvList.length;
     const starType = starDateMap[dateStr] || "";
 
     div.className="day-item";
     if(isToday) div.classList.add("today");
     if(isSelect) div.classList.add("active");
-    if(match) div.classList.add("has-ev");
-    //添加星日期class
+    if(dayCount>0) div.classList.add("has-ev");
     if(starType==="星旺日") div.classList.add("star-wang");
     if(starType==="星吉日") div.classList.add("star-ji");
     if(starType==="星好日") div.classList.add("star-hao");
@@ -374,54 +412,87 @@ function renderCalendar(){
     let termText="";
     const findTerm=terms.find(t=>t.m===currentMonth&&t.d===d);
     if(findTerm) termText=findTerm.name;
-    let evHtml=match?`<div class="ev-tag">${match.title}</div>`:"";
+
+    let badgeHtml=dayCount>0?`<div class="ev-badge">${dayCount}</div>`:"";
     let starHtml=starType?`<div class="star-tag">${starType}</div>`:"";
+
     div.innerHTML=`
       <div class="solar">${d}</div>
       <div class="lunar">${lunarStr}</div>
       ${festivalText?`<div class="festival">${festivalText}</div>`:""}
       ${termText?`<div class="solar-term">${termText}</div>`:""}
-      ${starHtml}${evHtml}
+      ${starHtml}
+      ${badgeHtml}
     `;
     div.dataset.y=currentYear;div.dataset.m=currentMonth;div.dataset.d=d;
     div.dataset.lunar=JSON.stringify(lunar);
     div.dataset.star=starType;
-    div.onclick=()=>clickDay(div);
+    div.dataset.dateStr=dateStr;
+    div.onclick=()=>clickDay(div,dayEvList);
     calendarEl.appendChild(div);
   }
 }
-function clickDay(el){
+
+//点击格子弹窗展示全部宴席详情
+function clickDay(el,evList){
   const y=Number(el.dataset.y);
   const m=Number(el.dataset.m);
   const d=Number(el.dataset.d);
   const lunar=JSON.parse(el.dataset.lunar);
   const starText = el.dataset.star || "无星日期";
+  const dateStr=el.dataset.dateStr;
+
   selectItem={y,m,d,lunar};
   const weekArr=["日","一","二","三","四","五","六"];
   const w=new Date(y,m-1,d).getDay();
   const gz=getGanZhiYear(lunar.year);
   let lunarDisplay=lunar.isLeap?`闰${lunarMonthText[lunar.month-1]}月${lunarDayText[lunar.day-1]}`:`${lunarMonthText[lunar.month-1]}月${lunarDayText[lunar.day-1]}`;
   infoCard.style.display="block";
-  const dayStr=`${y}-${String(m).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
-  const dayList = eventData.filter(x=>x.date===dayStr).map(i=>i.title).join("、")||"无宴席预定";
+
+  let detailHtml="";
+  if(evList.length===0){
+    detailHtml="<div>当日暂无宴席预定</div>";
+  }else{
+    evList.forEach(ev=>{
+      detailHtml+=`
+      <div class="detail-item">
+        <div>🏨宴会厅：${ev.hall||"未填写"}</div>
+        <div>👤客户名称：${ev.customer||"未填写"}</div>
+        <div>🪑桌数：${ev.table||"未填写"}</div>
+        <div>📋预定情况：${ev.title||""}</div>
+      </div>
+      `;
+    })
+  }
+
   infoText.innerHTML=`
     <div>公历：${y}-${m}-${d} 星期${weekArr[w]}</div>
     <div>农历：${gz}年 ${lunarDisplay}</div>
     <div>星日期：${starText}</div>
-    <div>当日宴席：${dayList}</div>
+    <div style="margin:8px 0 4px 0;font-weight:bold">宴席详情（共${evList.length}场）</div>
+    ${detailHtml}
   `;
   renderCalendar();
 }
+
 function bindEvent(){
-  $("#prev").onclick=()=>{
+  $("#prev").onclick=async ()=>{
+    if(loading)return;
     currentMonth--;if(currentMonth<1){ currentMonth=12; currentYear--; }
-    selectItem=null; infoCard.style.display="none"; renderCalendar();
+    selectItem=null; infoCard.style.display="none";
+    renderCalendar();
+    await fetchJdyMonthEvents(currentYear,currentMonth);
   }
-  $("#next").onclick=()=>{
+  $("#next").onclick=async ()=>{
+    if(loading)return;
     currentMonth++;if(currentMonth>12){ currentMonth=1; currentYear=currentYear+1; }
-    selectItem=null; infoCard.style.display="none"; renderCalendar();
+    selectItem=null; infoCard.style.display="none";
+    renderCalendar();
+    await fetchJdyMonthEvents(currentYear,currentMonth);
   }
-  $("#refresh").onclick=fetchJdyEvents;
+  $("#refresh").onclick=async ()=>{
+    await fetchJdyMonthEvents(currentYear,currentMonth);
+  };
   const themeBtn=$("#themeBtn");
   themeBtn.onclick=()=>{
     const html=document.documentElement;
