@@ -527,19 +527,19 @@ function clickDay(el,evList){
 }
 
 function bindEvent(){
-  $("#prev").onclick=async ()=>{
+  $("#prev").onclick=()=>{
     if(loading)return;
     currentMonth--;if(currentMonth<1){ currentMonth=12; currentYear--; }
     selectItem=null; infoCard.style.display="none";
     renderCalendar();
-    //切换月份不再请求接口，直接读取本地缓存
+    //切换月份：完全本地过滤，无任何网络请求
   }
-  $("#next").onclick=async ()=>{
+  $("#next").onclick=()=>{
     if(loading)return;
     currentMonth++;if(currentMonth>12){ currentMonth=1; currentYear=currentYear+1; }
     selectItem=null; infoCard.style.display="none";
     renderCalendar();
-    //切换月份不再请求接口，直接读取本地缓存
+    //切换月份：完全本地过滤，无任何网络请求
   }
   //点击刷新，执行全量拉取简道云全部记录，更新本地缓存
   $("#refresh").onclick=async ()=>{
