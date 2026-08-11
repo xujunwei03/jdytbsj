@@ -51,7 +51,7 @@
     .week-row{display:flex}
     .week-item{flex:1;text-align:center;padding:10px 0;font-size:14px;color:var(--text2)}
     .day-grid{display:flex;flex-wrap:wrap}
-    .day-item{width:14.2857%;text-align:center;padding:8px 2px;min-height:72px;border-radius:10px;cursor:pointer;border:1px solid transparent;position:relative}
+    .day-item{width:14.2857%;text-align:center;padding:6px 2px;min-height:80px;border-radius:10px;cursor:pointer;border:1px solid transparent;position:relative}
     .day-item.empty{cursor:default}
     .day-item.today{background:var(--today);color:#fff}
     .day-item.active{background:var(--select)}
@@ -64,9 +64,9 @@
 
     .solar{font-size:16px}
     .lunar{font-size:11px;color:var(--text3);margin-top:2px}
-    .festival{font-size:10px;color:#f5222d}
+    .festival{font-size:10px;color:#f5222d;font-weight:bold}
     .solar-term{font-size:10px;color:#009688}
-    .lunar-festival{font-size:10px;color:#d92121}
+    .lunar-festival{font-size:10px;color:#d92121;font-weight:bold}
     .ev-tag{font-size:9px;color:#d4380d;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .star-tag{font-size:9px;font-weight:bold;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
     /*宴席数量角标*/
@@ -275,7 +275,7 @@ async function loadFeishuJson(forceRefresh=false){
   }
 }
 
-// ====================== 【修复】校正版农历库，修复慢10天偏移 ======================
+// ====================== 【修复】校正版农历库，修复农历日期偏移 ======================
 const LUNAR_INFO = [
   0x04bd8,0x04ae0,0x0a570,0x054d5,0x0d260,0x0d950,0x16554,0x056a0,0x09ad0,0x055d2,
   0x04ae0,0x0a5b6,0x0a4d0,0x0d250,0x1d255,0x0b540,0x0d6a0,0x0ada2,0x095b0,0x14977,
@@ -298,24 +298,24 @@ const sTermInfo = [0,21208,42467,63836,85337,107014,128867,150921,173149,195551,
 
 // 公历固定节日（月‑日）
 const SOLAR_FESTIVAL = {
-  "1‑1":"元旦",
-  "2‑14":"情人节",
-  "3‑8":"妇女节",
-  "4‑5":"清明节",
-  "5‑1":"劳动节",
-  "6‑1":"儿童节",
-  "10‑1":"国庆节"
+  "1-1":"元旦",
+  "2-14":"情人节",
+  "3-8":"妇女节",
+  "4-5":"清明节",
+  "5-1":"劳动节",
+  "6-1":"儿童节",
+  "10-1":"国庆节"
 };
 // 农历传统节日 [月,日]:名称
 const LUNAR_FESTIVAL = {
-  "1‑1":"春节",
-  "1‑15":"元宵节",
-  "5‑5":"端午节",
-  "7‑7":"七夕",
-  "8‑15":"中秋节",
-  "9‑9":"重阳节",
-  "12‑8":"腊八",
-  "12‑30":"除夕"
+  "1-1":"春节",
+  "1-15":"元宵节",
+  "5-5":"端午节",
+  "7-7":"七夕",
+  "8-15":"中秋节",
+  "9-9":"重阳节",
+  "12-8":"腊八",
+  "12-30":"除夕"
 };
 
 function getGanZhiYear(y){ return Gan[(y-4)%10]+Zhi[(y-4)%12]; }
@@ -324,9 +324,9 @@ function getLunarMonthDays(y,m){ return (LUNAR_INFO[y-1900] & (0x10000>>m))?30:2
 function getLeapDays(y){ const lm=getLeapMonth(y); return lm?((LUNAR_INFO[y-1900]&0x10000)?30:29):0; }
 function getLunarYearDays(y){ let sum=348;for(let i=0x8000;i>0x8;i>>=1) sum+= (LUNAR_INFO[y-1900]&i)?1:0; return sum+getLeapDays(y); }
 
-// ========== 修复基准时间，修正农历偏移10天 ==========
+// ========== 修复基准时间，修正农历偏移 ==========
 function solarToLunar(y,m,d){
-  const base=new Date(1900, 0, 30);
+  const base=new Date(1900, 0, 31);
   const obj=new Date(y,m-1,d);
   let offset=Math.round((obj-base)/86400000);
   let ly=1900;
@@ -346,7 +346,7 @@ function solarToLunar(y,m,d){
 }
 
 function lunarToSolar(ly,lm,ld,isLeap){
-  const base=new Date(1900, 0, 30);
+  const base=new Date(1900, 0, 31);
   let offset=0;
   for(let y=1900;y<ly;y++) offset+=getLunarYearDays(y);
   const leapM=getLeapMonth(ly);
@@ -480,14 +480,15 @@ function renderCalendar(){
     let badgeHtml=dayCount>0?`<div class="ev-badge">${dayCount}</div>`:"";
     let starHtml=starType?`<div class="star-tag">${starType}</div>`:"";
 
+    //修复渲染顺序：节日放最前面，不会被遮挡
     div.innerHTML=`
+      ${badgeHtml}
       <div class="solar">${d}</div>
       <div class="lunar">${lunarStr}</div>
-      ${termText?`<div class="solar-term">${termText}</div>`:""}
-      ${lunarFestivalText?`<div class="lunar-festival">${lunarFestivalText}</div>`:""}
       ${festivalText?`<div class="festival">${festivalText}</div>`:""}
+      ${lunarFestivalText?`<div class="lunar-festival">${lunarFestivalText}</div>`:""}
+      ${termText?`<div class="solar-term">${termText}</div>`:""}
       ${starHtml}
-      ${badgeHtml}
     `;
     div.dataset.y=currentYear;div.dataset.m=currentMonth;div.dataset.d=d;
     div.dataset.lunar=JSON.stringify(lunar);
