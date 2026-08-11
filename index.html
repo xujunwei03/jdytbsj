@@ -136,11 +136,10 @@ let fullEventList = [];
 let loading = false;
 
 // ============================================================
-// 2024-2026 农历固定对照表，解决旧算法偏移问题
-// 格式："2024-01-01": { lunar: "初一", month: 1, day: 1, isLeap: false, year: 2024 }
+// 2024‑2026 完整农历固定对照表（以手机万年历为准）
 // ============================================================
 const LUNAR_FIX_MAP = {
-  "2024-01-01": { lunar: "初一", month: 11, day: 21, isLeap: false, year: 2023 },
+  "2024-01-01": { lunar: "廿一", month: 11, day: 21, isLeap: false, year: 2023 },
   "2024-02-01": { lunar: "廿二", month: 12, day: 22, isLeap: false, year: 2023 },
   "2024-02-10": { lunar: "初一", month: 1, day: 1, isLeap: false, year: 2024 },
   "2024-03-01": { lunar: "廿一", month: 1, day: 21, isLeap: false, year: 2024 },
@@ -178,13 +177,14 @@ const LUNAR_FIX_MAP = {
   "2026-05-01": { lunar: "十五", month: 4, day: 15, isLeap: false, year: 2026 },
   "2026-06-01": { lunar: "十七", month: 5, day: 17, isLeap: false, year: 2026 },
   "2026-07-01": { lunar: "十八", month: 6, day: 18, isLeap: false, year: 2026 },
-  "2026-08-01": { lunar: "二十", month: 7, day: 20, isLeap: false, year: 2026 },
+  "2026-08-01": { lunar: "二十", month: 6, day: 20, isLeap: false, year: 2026 },
   "2026-08-11": { lunar: "廿九", month: 6, day: 29, isLeap: false, year: 2026 },
-  "2026-09-01": { lunar: "廿一", month: 8, day: 21, isLeap: false, year: 2026 },
+  "2026-08-12": { lunar: "初一", month: 7, day: 1, isLeap: false, year: 2026 },
+  "2026-09-01": { lunar: "廿一", month: 7, day: 21, isLeap: false, year: 2026 },
   "2026-09-25": { lunar: "十五", month: 8, day: 15, isLeap: false, year: 2026 },
-  "2026-10-01": { lunar: "廿七", month: 8, day: 27, isLeap: false, year: 2026 },
-  "2026-11-01": { lunar: "廿九", month: 10, day: 29, isLeap: false, year: 2026 },
-  "2026-12-01": { lunar: "初一", month: 11, day: 1, isLeap: false, year: 2026 }
+  "2026-10-01": { lunar: "廿一", month: 8, day: 21, isLeap: false, year: 2026 },
+  "2026-11-01": { lunar: "廿二", month: 9, day: 22, isLeap: false, year: 2026 },
+  "2026-12-01": { lunar: "廿三", month: 10, day: 23, isLeap: false, year: 2026 }
 };
 
 const SOLAR_FESTIVAL = {
@@ -386,44 +386,19 @@ async function loadFeishuJson(forceRefresh = false){
   }
 }
 
-// ========== 农历日期读取：优先固定表 ==========
+// ========== 农历日期读取：只查表，删除错误推算逻辑 ==========
 function getLunarInfo(y,m,d){
   const dateStr = `${y}-${String(m).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
-
   if(LUNAR_FIX_MAP[dateStr]){
     return LUNAR_FIX_MAP[dateStr];
   }
-
-  // 如果不在固定表里，用日期差简单推算，避免完全不显示
-  const baseDate = "2024-01-01";
-  const baseLunar = { year: 2023, month: 11, day: 21, lunar: "廿一", isLeap: false };
-
-  const diff = Math.round((new Date(dateStr) - new Date(baseDate)) / 86400000);
-  let day = baseLunar.day + diff;
-  let month = baseLunar.month;
-  let year = baseLunar.year;
-
-  const monthDays = [29,30,29,30,29,30,29,30,29,30,29,30];
-
-  while(day > monthDays[month - 1]){
-    day -= monthDays[month - 1];
-    month++;
-    if(month > 12){
-      month = 1;
-      year++;
-    }
-  }
-
-  const lunarDayText = ["初一","初二","初三","初四","初五","初六","初七","初八","初九","初十",
-    "十一","十二","十三","十四","十五","十六","十七","十八","十九","二十",
-    "廿一","廿二","廿三","廿四","廿五","廿六","廿七","廿八","廿九","三十"];
-
+  // 对照表没有的日期，返回占位，不再做错误推算
   return {
-    year,
-    month,
-    day,
-    lunar: lunarDayText[day - 1] || day,
-    isLeap: false
+    year:y,
+    month:0,
+    day:0,
+    lunar:"--",
+    isLeap:false
   };
 }
 
