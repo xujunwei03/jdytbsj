@@ -132,6 +132,8 @@ const STAR_EXCEL_CONFIG = {
 };
 const FESHU_JSON_URL = "./feishu_data.json";
 const LOCAL_STORAGE_KEY = "feishu_banquet_cache";
+//缓存有效期：5分钟，毫秒
+const CACHE_TTL = 5 * 60 * 1000;
 
 let starDateMap = {};
 /** 全部宴席缓存，切换月份直接本地过滤，无网络请求 */
@@ -154,6 +156,11 @@ function readEventCache(){
     return null;
   }
 }
+//判断缓存是否过期
+function isCacheExpired(cacheObj){
+  return Date.now() - cacheObj.updateTime > CACHE_TTL;
+}
+
 //根据年月，从全量缓存过滤当月数据
 function getMonthEventFromCache(y,m){
   const {start,end}=getMonthRange(y,m);
@@ -191,7 +198,7 @@ async function loadStarExcel() {
         dateVal = dateVal.toString().trim();
         const parts = dateVal.split(/[\/\-]/);
         if (parts.length === 3) {
-          dateStr = parts[0] + "-" + parts[1].padStart(2, "0") + "-" + parts[2].padStart(2, "0");
+          dateStr = parts[0] + "-" + String(parts[1]).padStart(2, "0") + "-" + String(parts[2]).padStart(2, "0");
         } else {
           continue;
         }
@@ -223,14 +230,16 @@ function getMonthRange(y,m){
 /**
  * 读取飞书导出静态json文件
  */
-async function loadFeishuJson(){
+async function loadFeishuJson(forceRefresh=false){
   if(loading) return;
   loading=true;
   const loadStatus=document.getElementById("loadStatus");
   const cacheInfo=document.getElementById("cacheInfo");
-  loadStatus.innerText="正在读取feishu_data.json宴席数据...";
   try{
-    const resp = await fetch(FESHU_JSON_URL);
+    if(forceRefresh){
+      loadStatus.innerText="正在读取feishu_data.json宴席数据...";
+    }
+    const resp = await fetch(FESHU_JSON_URL, {cache: forceRefresh?"no-cache":"default"});
     if(!resp.ok) throw new Error(`文件读取失败 ${resp.status}，确认feishu_data.json和index.html放在同一目录`);
     const rawArr = await resp.json();
     //字段转换，适配日历内部字段
@@ -238,7 +247,7 @@ async function loadFeishuJson(){
       return {
         date: item["宴会日期"] || "",
         hall: item["宴会厅"] || "",
-        customer: item["档期属性"] || "",
+        customer: item["客户|宴会主题"] || "",
         table: item["桌数"] || "",
         sales: item["销售负责人"] || "",
         title: item["预定情况"] || ""
@@ -253,9 +262,13 @@ async function loadFeishuJson(){
     renderCalendar();
     loadStatus.innerText=`✅已同步全部宴席${fullEventList.length}条`;
   }catch(err){
-    alert("读取feishu_data.json失败："+err.message);
+    if(!forceRefresh){
+      loadStatus.innerText="网络更新失败，继续使用本地缓存";
+    }else{
+      alert("读取feishu_data.json失败："+err.message);
+      loadStatus.innerText="❌读取json失败";
+    }
     console.error(err);
-    loadStatus.innerText="❌读取json失败";
   }finally{
     loading=false;
   }
@@ -293,28 +306,28 @@ const SOLAR_FESTIVAL = {
   "10‑1":"国庆节"
 };
 
-function getGanZhiYear(y){ return Gan[(y‑4)%10]+Zhi[(y‑4)%12]; }
-function getLeapMonth(y){ return LUNAR_INFO[y‑1900] & 0xf; }
-function getLunarMonthDays(y,m){ return (LUNAR_INFO[y‑1900] & (0x10000>>m))?30:29; }
-function getLeapDays(y){ const lm=getLeapMonth(y); return lm?((LUNAR_INFO[y‑1900]&0x10000)?30:29):0; }
-function getLunarYearDays(y){ let sum=348;for(let i=0x8000;i>0x8;i>>=1) sum+= (LUNAR_INFO[y‑1900]&i)?1:0; return sum+getLeapDays(y); }
+function getGanZhiYear(y){ return Gan[(y-4)%10]+Zhi[(y-4)%12]; }
+function getLeapMonth(y){ return LUNAR_INFO[y-1900] & 0xf; }
+function getLunarMonthDays(y,m){ return (LUNAR_INFO[y-1900] & (0x10000>>m))?30:29; }
+function getLeapDays(y){ const lm=getLeapMonth(y); return lm?((LUNAR_INFO[y-1900]&0x10000)?30:29):0; }
+function getLunarYearDays(y){ let sum=348;for(let i=0x8000;i>0x8;i>>=1) sum+= (LUNAR_INFO[y-1900]&i)?1:0; return sum+getLeapDays(y); }
 
 function solarToLunar(y,m,d){
   const base=new Date(1900,0,31);
-  const obj=new Date(y,m‑1,d);
-  let offset=Math.round((obj‑base)/86400000);
+  const obj=new Date(y,m-1,d);
+  let offset=Math.round((obj-base)/86400000);
   let ly=1900;
   while(ly<2100&&offset>0){
     const yd=getLunarYearDays(ly);
-    if(offset<=yd)break;offset‑=yd;ly++;
+    if(offset<=yd)break;offset-=yd;ly++;
   }
   let lm=1,isLeap=false;
   const leapM=getLeapMonth(ly);
   let md;
   while(lm<=12&&offset>0){
-    if(leapM>0&&lm===leapM+1&&!isLeap){ lm‑‑;isLeap=true;md=getLeapDays(ly); }
+    if(leapM>0&&lm===leapM+1&&!isLeap){ lm--;isLeap=true;md=getLeapDays(ly); }
     else { md=getLunarMonthDays(ly,lm); }
-    if(offset<=md)break; offset‑=md; isLeap=false; lm++;
+    if(offset<=md)break; offset-=md; isLeap=false; lm++;
   }
   return {year:ly,month:lm,day:offset,isLeap};
 }
@@ -330,7 +343,7 @@ function lunarToSolar(ly,lm,ld,isLeap){
   }
   if(isLeap&&leapM===lm) offset+=getLeapDays(ly);
   else if(leapM>0&&lm>leapM) offset+=getLeapDays(ly);
-  offset+= (ld‑1);
+  offset+= (ld-1);
   const res=new Date(base.getTime()+offset*86400000);
   return {y:res.getFullYear(),m:res.getMonth()+1,d:res.getDate()};
 }
@@ -351,7 +364,7 @@ function getYearAllSolarTerm(y){
 
 // 获取公历节日
 function getSolarFestival(y,m,d){
-  const k = `${m}‑${d}`;
+  const k = `${m}-${d}`;
   return SOLAR_FESTIVAL[k] || "";
 }
 
@@ -368,7 +381,8 @@ async function init(){
   const now=new Date();
   currentYear=now.getFullYear();
   currentMonth=now.getMonth()+1;
-  //优先读取本地缓存
+
+  //优先读取本地缓存，立刻渲染页面，不等待网络
   const cache = readEventCache();
   if(cache && Array.isArray(cache.data)){
     fullEventList = cache.data;
@@ -378,9 +392,14 @@ async function init(){
   }
   renderCalendar();
   bindEvent();
-  await loadStarExcel();
-  //页面初始化读取json
-  await loadFeishuJson();
+
+  //Excel 和 json 并行同时加载，减少总耗时
+  const pExcel = loadStarExcel();
+  //缓存过期，后台静默拉取；没缓存强制拉取
+  if(cache === null || isCacheExpired(cache)){
+    loadFeishuJson(false);
+  }
+  await pExcel;
   renderCalendar();
 }
 
@@ -390,7 +409,7 @@ function renderCalendar(){
 
   calendarEl.innerHTML="";
   ymEl.innerText=`${currentYear}年${currentMonth}月`;
-  const first=new Date(currentYear,currentMonth‑1,1);
+  const first=new Date(currentYear,currentMonth-1,1);
   const weekStart=first.getDay();
   const totalDay=new Date(currentYear,currentMonth,0).getDate();
   const today=new Date();
@@ -415,9 +434,9 @@ function renderCalendar(){
     const div=document.createElement("div");
     const lunar=solarToLunar(currentYear,currentMonth,d);
     let lunarStr;
-    if(lunar.isLeap) lunarStr="闰"+lunarMonthText[lunar.month‑1]+lunarDayText[lunar.day‑1];
-    else if(lunar.day===1) lunarStr=lunarMonthText[lunar.month‑1]+"月";
-    else lunarStr=lunarDayText[lunar.day‑1];
+    if(lunar.isLeap) lunarStr="闰"+lunarMonthText[lunar.month-1]+lunarDayText[lunar.day-1];
+    else if(lunar.day===1) lunarStr=lunarMonthText[lunar.month-1]+"月";
+    else lunarStr=lunarDayText[lunar.day-1];
     const isToday=(ty===currentYear&&tm===currentMonth&&td===d);
     const isSelect=selectItem&&selectItem.y===currentYear&&selectItem.m===currentMonth&&selectItem.d===d;
     const dateStr=`${currentYear}-${String(currentMonth).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
@@ -429,24 +448,24 @@ function renderCalendar(){
     if(isToday) div.classList.add("today");
     if(isSelect) div.classList.add("active");
     if(dayCount>0) div.classList.add("has-ev");
-    if(starType==="星旺日") div.classList.add("star‑wang");
-    if(starType==="星吉日") div.classList.add("star‑ji");
-    if(starType==="星好日") div.classList.add("star‑hao");
-    if(starType==="星宜日") div.classList.add("star‑yi");
+    if(starType==="星旺日") div.classList.add("star-wang");
+    if(starType==="星吉日") div.classList.add("star-ji");
+    if(starType==="星好日") div.classList.add("star-hao");
+    if(starType==="星宜日") div.classList.add("star-yi");
 
     let festivalText = getSolarFestival(currentYear, currentMonth, d);
     let termText="";
     const findTerm=terms.find(t=>t.m===currentMonth&&t.d===d);
     if(findTerm) termText=findTerm.name;
 
-    let badgeHtml=dayCount>0?`<div class="ev‑badge">${dayCount}</div>`:"";
-    let starHtml=starType?`<div class="star‑tag">${starType}</div>`:"";
+    let badgeHtml=dayCount>0?`<div class="ev-badge">${dayCount}</div>`:"";
+    let starHtml=starType?`<div class="star-tag">${starType}</div>`:"";
 
     div.innerHTML=`
       <div class="solar">${d}</div>
       <div class="lunar">${lunarStr}</div>
       ${festivalText?`<div class="festival">${festivalText}</div>`:""}
-      ${termText?`<div class="solar‑term">${termText}</div>`:""}
+      ${termText?`<div class="solar-term">${termText}</div>`:""}
       ${starHtml}
       ${badgeHtml}
     `;
@@ -470,9 +489,9 @@ function clickDay(el,evList){
 
   selectItem={y,m,d,lunar};
   const weekArr=["日","一","二","三","四","五","六"];
-  const w=new Date(y,m‑1,d).getDay();
+  const w=new Date(y,m-1,d).getDay();
   const gz=getGanZhiYear(lunar.year);
-  let lunarDisplay=lunar.isLeap?`闰${lunarMonthText[lunar.month‑1]}月${lunarDayText[lunar.day‑1]}`:`${lunarMonthText[lunar.month‑1]}月${lunarDayText[lunar.day‑1]}`;
+  let lunarDisplay=lunar.isLeap?`闰${lunarMonthText[lunar.month-1]}月${lunarDayText[lunar.day-1]}`:`${lunarMonthText[lunar.month-1]}月${lunarDayText[lunar.day-1]}`;
   infoCard.style.display="block";
 
   let detailHtml="";
@@ -481,7 +500,7 @@ function clickDay(el,evList){
   }else{
     evList.forEach(ev=>{
       detailHtml+=`
-      <div class="detail‑item">
+      <div class="detail-item">
         <div>🏨宴会厅：${ev.hall||"未填写"}</div>
         <div>👤客户|宴会主题：${ev.customer||"未填写"}</div>
         <div>🪑桌数：${ev.table||"未填写"}</div>
@@ -496,7 +515,7 @@ function clickDay(el,evList){
     <div>公历：${y}-${m}-${d} 星期${weekArr[w]}</div>
     <div>农历：${gz}年 ${lunarDisplay}</div>
     <div>星日期：${starText}</div>
-    <div style="margin:8px 0 4px 0;font‑weight:bold">宴席详情（共${evList.length}场）</div>
+    <div style="margin:8px 0 4px 0;font-weight:bold">宴席详情（共${evList.length}场）</div>
     ${detailHtml}
   `;
   renderCalendar();
@@ -505,7 +524,7 @@ function clickDay(el,evList){
 function bindEvent(){
   $("#prev").onclick=()=>{
     if(loading)return;
-    currentMonth‑‑;if(currentMonth<1){ currentMonth=12; currentYear‑‑; }
+    currentMonth--;if(currentMonth<1){ currentMonth=12; currentYear--; }
     selectItem=null; infoCard.style.display="none";
     renderCalendar();
   }
@@ -516,12 +535,12 @@ function bindEvent(){
     renderCalendar();
   }
   $("#refresh").onclick=async ()=>{
-    await loadFeishuJson();
+    await loadFeishuJson(true);
   };
   const themeBtn=$("#themeBtn");
   themeBtn.onclick=()=>{
     const html=document.documentElement;
-    html.hasAttribute("data‑theme")?(html.removeAttribute("data‑theme"),themeBtn.innerText="切换深色"):(html.setAttribute("data‑theme","dark"),themeBtn.innerText="切换浅色");
+    html.hasAttribute("data-theme")?(html.removeAttribute("data-theme"),themeBtn.innerText="切换深色"):(html.setAttribute("data-theme","dark"),themeBtn.innerText="切换浅色");
   }
   $("#doQuery").onclick=()=>{
     const type=$("#qType").value;
@@ -533,7 +552,7 @@ function bindEvent(){
       if(type=="s2l"){
         const l=solarToLunar(qy,qm,qd);
         const gz=getGanZhiYear(l.year);
-        const lunarStr=l.isLeap?`闰${lunarMonthText[l.month‑1]}月${lunarDayText[l.day‑1]}`:`${lunarMonthText[l.month‑1]}月${lunarDayText[l.day‑1]}`;
+        const lunarStr=l.isLeap?`闰${lunarMonthText[l.month-1]}月${lunarDayText[l.day-1]}`:`${lunarMonthText[l.month-1]}月${lunarDayText[l.day-1]}`;
         resEl.innerText=`公历 ${qy}-${qm}-${qd} → 农历 ${gz}年 ${lunarStr}`;
       }else{
         const s=lunarToSolar(qy,qm,qd,false);
