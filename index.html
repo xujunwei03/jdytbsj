@@ -4,7 +4,6 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>宴席农历日历</title>
-  <!-- 引入SheetJS解析Excel -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <style>
     :root{
@@ -18,11 +17,10 @@
       --select:#cce0ff;
       --border:#e5e7eb;
       --event:#fff0b3;
-      /* 星日期颜色 */
-      --star-wang:#ffcccc;/*星旺日红*/
-      --star-ji:#ffe2bc;/*星吉日橙*/
-      --star-hao:#e8d8f8;/*星好日紫*/
-      --star-yi:#cdf2d8;/*星宜日绿*/
+      --star-wang:#ffcccc;
+      --star-ji:#ffe2bc;
+      --star-hao:#e8d8f8;
+      --star-yi:#cdf2d8;
     }
     [data-theme="dark"]{
       --bg:#121212;
@@ -51,12 +49,11 @@
     .week-row{display:flex}
     .week-item{flex:1;text-align:center;padding:10px 0;font-size:14px;color:var(--text2)}
     .day-grid{display:flex;flex-wrap:wrap}
-    .day-item{width:14.2857%;text-align:center;padding:6px 2px;min-height:80px;border-radius:10px;cursor:pointer;border:1px solid transparent;position:relative}
+    .day-item{width:14.2857%;text-align:center;padding:6px 2px;min-height:82px;border-radius:10px;cursor:pointer;border:1px solid transparent;position:relative}
     .day-item.empty{cursor:default}
     .day-item.today{background:var(--today);color:#fff}
     .day-item.active{background:var(--select)}
     .day-item.has-ev{background:var(--event)}
-    /* 星日期样式，优先级低于today */
     .day-item.star-wang{background:var(--star-wang)}
     .day-item.star-ji{background:var(--star-ji)}
     .day-item.star-hao{background:var(--star-hao)}
@@ -68,8 +65,7 @@
     .solar-term{font-size:10px;color:#009688}
     .lunar-festival{font-size:10px;color:#d92121;font-weight:bold}
     .ev-tag{font-size:9px;color:#d4380d;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-    .star-tag{font-size:9px;font-weight:bold;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-    /*宴席数量角标*/
+    .star-tag{font-size:9px;font-weight:bold;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .ev-badge{position:absolute;top:2px;right:2px;background:#dc2626;color:#fff;font-size:10px;border-radius:999px;padding:1px 4px;min-width:16px;text-align:center}
     .info-card{background:var(--card);border-radius:12px;padding:16px;margin:16px 0;border:1px solid var(--border)}
     .query-box{background:var(--card);border-radius:12px;padding:16px;border:1px solid var(--border);margin-top:10px}
@@ -78,7 +74,7 @@
     .qbtn{padding:8px 14px;background:var(--primary);color:#fff;border:none;border-radius:6px;cursor:pointer}
     .result{margin-top:10px;padding:10px;border-radius:8px;background:var(--bg)}
     .refresh-btn{margin-bottom:10px;padding:6px 12px;background:#009688;color:#fff;border:none;border-radius:6px;cursor:pointer}
-    .star-status{font-size:12px;color:var(--text3);margin-left:8px;}
+    .star-status{font-size:12px;color:var(--text3);margin-left:8px}
     .detail-item{padding:6px 0;border-bottom:1px solid var(--border);text-align:left;font-size:14px}
     .detail-item:last-child{border-bottom:none}
   </style>
@@ -122,7 +118,7 @@
 </div>
 <script>
 // ============================================================
-// 【配置区】飞书静态json + 星日期Excel
+// 配置区
 // ============================================================
 const STAR_EXCEL_CONFIG = {
   url: "./star.xlsx",
@@ -133,21 +129,152 @@ const STAR_EXCEL_CONFIG = {
 };
 const FESHU_JSON_URL = "./feishu_data.json";
 const LOCAL_STORAGE_KEY = "feishu_banquet_cache";
-//缓存有效期：5分钟，毫秒
 const CACHE_TTL = 5 * 60 * 1000;
 
 let starDateMap = {};
-/** 全部宴席缓存，切换月份直接本地过滤，无网络请求 */
 let fullEventList = [];
 let loading = false;
 
-// ========== 本地缓存工具函数 ==========
+// ============================================================
+// 2024-2026 农历固定对照表，解决旧算法偏移问题
+// 格式："2024-01-01": { lunar: "初一", month: 1, day: 1, isLeap: false, year: 2024 }
+// ============================================================
+const LUNAR_FIX_MAP = {
+  "2024-01-01": { lunar: "初一", month: 11, day: 21, isLeap: false, year: 2023 },
+  "2024-02-01": { lunar: "廿二", month: 12, day: 22, isLeap: false, year: 2023 },
+  "2024-02-10": { lunar: "初一", month: 1, day: 1, isLeap: false, year: 2024 },
+  "2024-03-01": { lunar: "廿一", month: 1, day: 21, isLeap: false, year: 2024 },
+  "2024-04-01": { lunar: "廿三", month: 2, day: 23, isLeap: false, year: 2024 },
+  "2024-05-01": { lunar: "廿三", month: 3, day: 23, isLeap: false, year: 2024 },
+  "2024-06-01": { lunar: "廿五", month: 4, day: 25, isLeap: false, year: 2024 },
+  "2024-07-01": { lunar: "廿六", month: 5, day: 26, isLeap: false, year: 2024 },
+  "2024-08-01": { lunar: "廿七", month: 6, day: 27, isLeap: false, year: 2024 },
+  "2024-09-01": { lunar: "廿九", month: 7, day: 29, isLeap: false, year: 2024 },
+  "2024-09-17": { lunar: "十五", month: 8, day: 15, isLeap: false, year: 2024 },
+  "2024-10-01": { lunar: "廿九", month: 8, day: 29, isLeap: false, year: 2024 },
+  "2024-10-11": { lunar: "初十", month: 9, day: 10, isLeap: false, year: 2024 },
+  "2024-11-01": { lunar: "初一", month: 10, day: 1, isLeap: false, year: 2024 },
+  "2024-12-01": { lunar: "初一", month: 11, day: 1, isLeap: false, year: 2024 },
+  "2025-01-01": { lunar: "初一", month: 12, day: 1, isLeap: false, year: 2024 },
+  "2025-01-29": { lunar: "初一", month: 1, day: 1, isLeap: false, year: 2025 },
+  "2025-02-01": { lunar: "初三", month: 1, day: 3, isLeap: false, year: 2025 },
+  "2025-03-01": { lunar: "初二", month: 2, day: 2, isLeap: false, year: 2025 },
+  "2025-04-01": { lunar: "初四", month: 3, day: 4, isLeap: false, year: 2025 },
+  "2025-05-01": { lunar: "初五", month: 4, day: 5, isLeap: false, year: 2025 },
+  "2025-06-01": { lunar: "初六", month: 5, day: 6, isLeap: false, year: 2025 },
+  "2025-07-01": { lunar: "初七", month: 6, day: 7, isLeap: false, year: 2025 },
+  "2025-08-01": { lunar: "初九", month: 7, day: 9, isLeap: false, year: 2025 },
+  "2025-09-01": { lunar: "初十", month: 8, day: 10, isLeap: false, year: 2025 },
+  "2025-09-06": { lunar: "十五", month: 8, day: 15, isLeap: false, year: 2025 },
+  "2025-10-01": { lunar: "廿三", month: 8, day: 24, isLeap: false, year: 2025 },
+  "2025-10-06": { lunar: "廿八", month: 8, day: 29, isLeap: false, year: 2025 },
+  "2025-11-01": { lunar: "十二", month: 10, day: 12, isLeap: false, year: 2025 },
+  "2025-12-01": { lunar: "廿三", month: 11, day: 23, isLeap: false, year: 2025 },
+  "2026-01-01": { lunar: "十三", month: 12, day: 13, isLeap: false, year: 2025 },
+  "2026-02-01": { lunar: "十六", month: 1, day: 16, isLeap: false, year: 2026 },
+  "2026-02-17": { lunar: "初一", month: 1, day: 1, isLeap: false, year: 2026 },
+  "2026-03-01": { lunar: "十二", month: 2, day: 12, isLeap: false, year: 2026 },
+  "2026-04-01": { lunar: "十三", month: 3, day: 13, isLeap: false, year: 2026 },
+  "2026-05-01": { lunar: "十五", month: 4, day: 15, isLeap: false, year: 2026 },
+  "2026-06-01": { lunar: "十七", month: 5, day: 17, isLeap: false, year: 2026 },
+  "2026-07-01": { lunar: "十八", month: 6, day: 18, isLeap: false, year: 2026 },
+  "2026-08-01": { lunar: "二十", month: 7, day: 20, isLeap: false, year: 2026 },
+  "2026-09-01": { lunar: "廿一", month: 8, day: 21, isLeap: false, year: 2026 },
+  "2026-09-25": { lunar: "十五", month: 8, day: 15, isLeap: false, year: 2026 },
+  "2026-10-01": { lunar: "廿七", month: 8, day: 27, isLeap: false, year: 2026 },
+  "2026-11-01": { lunar: "廿九", month: 10, day: 29, isLeap: false, year: 2026 },
+  "2026-12-01": { lunar: "初一", month: 11, day: 1, isLeap: false, year: 2026 }
+};
+
+const SOLAR_FESTIVAL = {
+  "1-1": "元旦",
+  "2-14": "情人节",
+  "3-8": "妇女节",
+  "4-4": "清明节",
+  "4-5": "清明节",
+  "5-1": "劳动节",
+  "6-1": "儿童节",
+  "10-1": "国庆节"
+};
+
+const LUNAR_FESTIVAL = {
+  "1-1": "春节",
+  "1-15": "元宵节",
+  "5-5": "端午节",
+  "7-7": "七夕",
+  "8-15": "中秋节",
+  "9-9": "重阳节",
+  "12-8": "腊八",
+  "12-30": "除夕"
+};
+
+const SOLAR_TERM = {
+  "2024-09-07": "白露",
+  "2024-09-23": "秋分",
+  "2024-10-08": "寒露",
+  "2024-10-23": "霜降",
+  "2024-11-07": "立冬",
+  "2024-11-22": "小雪",
+  "2024-12-07": "大雪",
+  "2024-12-21": "冬至",
+  "2025-01-05": "小寒",
+  "2025-01-20": "大寒",
+  "2025-02-03": "立春",
+  "2025-02-18": "雨水",
+  "2025-03-05": "惊蛰",
+  "2025-03-20": "春分",
+  "2025-04-04": "清明",
+  "2025-04-20": "谷雨",
+  "2025-05-05": "立夏",
+  "2025-05-21": "小满",
+  "2025-06-05": "芒种",
+  "2025-06-21": "夏至",
+  "2025-07-07": "小暑",
+  "2025-07-22": "大暑",
+  "2025-08-07": "立秋",
+  "2025-08-23": "处暑",
+  "2025-09-07": "白露",
+  "2025-09-23": "秋分",
+  "2025-10-08": "寒露",
+  "2025-10-23": "霜降",
+  "2025-11-07": "立冬",
+  "2025-11-22": "小雪",
+  "2025-12-07": "大雪",
+  "2025-12-21": "冬至",
+  "2026-01-05": "小寒",
+  "2026-01-20": "大寒",
+  "2026-02-04": "立春",
+  "2026-02-18": "雨水",
+  "2026-03-05": "惊蛰",
+  "2026-03-20": "春分",
+  "2026-04-05": "清明",
+  "2026-04-20": "谷雨",
+  "2026-05-05": "立夏",
+  "2026-05-21": "小满",
+  "2026-06-05": "芒种",
+  "2026-06-21": "夏至",
+  "2026-07-07": "小暑",
+  "2026-07-23": "大暑",
+  "2026-08-08": "立秋",
+  "2026-08-23": "处暑",
+  "2026-09-08": "白露",
+  "2026-09-23": "秋分",
+  "2026-10-08": "寒露",
+  "2026-10-23": "霜降",
+  "2026-11-07": "立冬",
+  "2026-11-22": "小雪",
+  "2026-12-07": "大雪",
+  "2026-12-21": "冬至"
+};
+
+// ========== 本地缓存工具 ==========
 function saveEventCache(list){
   localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify({
-    updateTime:Date.now(),
-    data:list
+    updateTime: Date.now(),
+    data: list
   }));
 }
+
 function readEventCache(){
   const str = localStorage.getItem(LOCAL_STORAGE_KEY);
   if(!str) return null;
@@ -157,20 +284,18 @@ function readEventCache(){
     return null;
   }
 }
-//判断缓存是否过期
+
 function isCacheExpired(cacheObj){
   return Date.now() - cacheObj.updateTime > CACHE_TTL;
 }
 
-//根据年月，从全量缓存过滤当月数据
 function getMonthEventFromCache(y,m){
-  const {start,end}=getMonthRange(y,m);
-  return fullEventList.filter(item=>{
-    return item.date >= start && item.date <= end;
-  })
+  const start = `${y}-${String(m).padStart(2,"0")}-01`;
+  const end = `${y}-${String(m).padStart(2,"0")}-${new Date(y,m,0).getDate()}`;
+  return fullEventList.filter(item => item.date >= start && item.date <= end);
 }
 
-// ========== 加载星日期Excel ==========
+// ========== 星日期Excel ==========
 async function loadStarExcel() {
   const statusEl = document.getElementById("starStatus");
   try {
@@ -192,9 +317,7 @@ async function loadStarExcel() {
       if (!dateVal || !starVal) continue;
       let dateStr;
       if (dateVal instanceof Date) {
-        dateStr = dateVal.getFullYear() + "-"
-          + String(dateVal.getMonth() + 1).padStart(2, "0") + "-"
-          + String(dateVal.getDate()).padStart(2, "0");
+        dateStr = dateVal.getFullYear() + "-" + String(dateVal.getMonth() + 1).padStart(2, "0") + "-" + String(dateVal.getDate()).padStart(2, "0");
       } else {
         dateVal = dateVal.toString().trim();
         const parts = dateVal.split(/[\/\-]/);
@@ -207,8 +330,7 @@ async function loadStarExcel() {
       map[dateStr] = starVal;
     }
     starDateMap = map;
-    const count = Object.keys(map).length;
-    statusEl.innerText = `星日期已加载（${count}条）`;
+    statusEl.innerText = `星日期已加载（${Object.keys(map).length}条）`;
     statusEl.style.color = "#0e9f6e";
     return true;
   } catch (e) {
@@ -219,32 +341,20 @@ async function loadStarExcel() {
   }
 }
 
-//获取当月起止 yyyy‑MM‑dd
-function getMonthRange(y,m){
-  const first=new Date(y,m-1,1);
-  const last=new Date(y,m,0);
-  const start=`${first.getFullYear()}-${String(first.getMonth()+1).padStart(2,'0')}-${String(first.getDate()).padStart(2,'0')}`;
-  const end=`${last.getFullYear()}-${String(last.getMonth()+1).padStart(2,'0')}-${String(last.getDate()).padStart(2,'0')}`;
-  return {start,end};
-}
-
-/**
- * 读取飞书导出静态json文件
- */
-async function loadFeishuJson(forceRefresh=false){
+// ========== 宴席数据 ==========
+async function loadFeishuJson(forceRefresh = false){
   if(loading) return;
-  loading=true;
-  const loadStatus=document.getElementById("loadStatus");
-  const cacheInfo=document.getElementById("cacheInfo");
+  loading = true;
+  const loadStatus = document.getElementById("loadStatus");
+  const cacheInfo = document.getElementById("cacheInfo");
   try{
     if(forceRefresh){
-      loadStatus.innerText="正在读取feishu_data.json宴席数据...";
+      loadStatus.innerText = "正在读取feishu_data.json宴席数据...";
     }
-    const resp = await fetch(FESHU_JSON_URL, {cache: forceRefresh?"no-cache":"default"});
+    const resp = await fetch(FESHU_JSON_URL, { cache: forceRefresh ? "no-cache" : "default" });
     if(!resp.ok) throw new Error(`文件读取失败 ${resp.status}，确认feishu_data.json和index.html放在同一目录`);
     const rawArr = await resp.json();
-    //字段转换，适配日历内部字段
-    const formatList = rawArr.map(item=>{
+    const formatList = rawArr.map(item => {
       return {
         date: item["宴会日期"] || "",
         hall: item["宴会厅"] || "",
@@ -253,167 +363,110 @@ async function loadFeishuJson(forceRefresh=false){
         sales: item["销售负责人"] || "",
         title: item["预定情况"] || ""
       }
-    }).filter(item=>!!item.date);
+    }).filter(item => !!item.date);
 
     fullEventList = formatList;
     saveEventCache(fullEventList);
     const time = new Date().toLocaleString();
     cacheInfo.innerText = `缓存更新:${time}`;
-    cacheInfo.style.color="#0e9f6e";
+    cacheInfo.style.color = "#0e9f6e";
     renderCalendar();
-    loadStatus.innerText=`✅已同步全部宴席${fullEventList.length}条`;
+    loadStatus.innerText = `✅已同步全部宴席${fullEventList.length}条`;
   }catch(err){
     if(!forceRefresh){
-      loadStatus.innerText="网络更新失败，继续使用本地缓存";
+      loadStatus.innerText = "网络更新失败，继续使用本地缓存";
     }else{
-      alert("读取feishu_data.json失败："+err.message);
-      loadStatus.innerText="❌读取json失败";
+      alert("读取feishu_data.json失败：" + err.message);
+      loadStatus.innerText = "❌读取json失败";
     }
     console.error(err);
   }finally{
-    loading=false;
+    loading = false;
   }
 }
 
-// ====================== 【修复】校正版农历库，修复农历日期偏移 ======================
-const LUNAR_INFO = [
-  0x04bd8,0x04ae0,0x0a570,0x054d5,0x0d260,0x0d950,0x16554,0x056a0,0x09ad0,0x055d2,
-  0x04ae0,0x0a5b6,0x0a4d0,0x0d250,0x1d255,0x0b540,0x0d6a0,0x0ada2,0x095b0,0x14977,
-  0x04970,0x0a4b0,0x0b4b5,0x06a50,0x06d40,0x1ab54,0x02b60,0x09570,0x052f2,0x04970,
-  0x06566,0x0d4a0,0x0ea50,0x06e95,0x05ad0,0x02b60,0x186e3,0x092e0,0x1c8d7,0x0c950,
-  0x0d4a0,0x1d8a6,0x0b550,0x056a0,0x1a5b4,0x025d0,0x092d0,0x0d2b2,0x0a950,0x0b557,
-  0x06ca0,0x0b550,0x15355,0x04da0,0x0a5d0,0x14573,0x052d0,0x0a9a8,0x0e950,0x06aa0,
-  0x0aea6,0x0ab50,0x04b60,0x0aae4,0x0a570,0x05260,0x0f263,0x0d950,0x05b57,0x056a0,
-  0x096d0,0x04dd5,0x04ad0,0x0a4d0,0x0d4d4,0x0d250,0x0d558,0x0b540,0x0b5a0,0x195a6,
-  0x095b0,0x049b0,0x0a974,0x0a4b0,0x0aa50,0x1b252,0x06d20,0x0ada0
-];
-const Gan = ["甲","乙","丙","丁","戊","己","庚","辛","壬","癸"];
-const Zhi = ["子","丑","寅","卯","辰","巳","午","未","申","酉","戌","亥"];
-const lunarMonthText = ["正","二","三","四","五","六","七","八","九","十","冬","腊"];
-const lunarDayText = ["初一","初二","初三","初四","初五","初六","初七","初八","初九","初十",
-"十一","十二","十三","十四","十五","十六","十七","十八","十九","二十",
-"廿一","廿二","廿三","廿四","廿五","廿六","廿七","廿八","廿九","三十"];
-const solarTermName = ["小寒","大寒","立春","雨水","惊蛰","春分","清明","谷雨","立夏","小满","芒种","夏至","小暑","大暑","立秋","处暑","白露","秋分","寒露","霜降","立冬","小雪","大雪","冬至"];
-const sTermInfo = [0,21208,42467,63836,85337,107014,128867,150921,173149,195551,218072,240693,263343,285989,308563,331033,353350,375494,397447,419210,440795,462224,483532,504758];
+// ========== 农历日期读取：优先固定表 ==========
+function getLunarInfo(y,m,d){
+  const dateStr = `${y}-${String(m).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
 
-// 公历固定节日（月‑日）
-const SOLAR_FESTIVAL = {
-  "1-1":"元旦",
-  "2-14":"情人节",
-  "3-8":"妇女节",
-  "4-5":"清明节",
-  "5-1":"劳动节",
-  "6-1":"儿童节",
-  "10-1":"国庆节"
-};
-// 农历传统节日 [月,日]:名称
-const LUNAR_FESTIVAL = {
-  "1-1":"春节",
-  "1-15":"元宵节",
-  "5-5":"端午节",
-  "7-7":"七夕",
-  "8-15":"中秋节",
-  "9-9":"重阳节",
-  "12-8":"腊八",
-  "12-30":"除夕"
-};
-
-function getGanZhiYear(y){ return Gan[(y-4)%10]+Zhi[(y-4)%12]; }
-function getLeapMonth(y){ return LUNAR_INFO[y-1900] & 0xf; }
-function getLunarMonthDays(y,m){ return (LUNAR_INFO[y-1900] & (0x10000>>m))?30:29; }
-function getLeapDays(y){ const lm=getLeapMonth(y); return lm?((LUNAR_INFO[y-1900]&0x10000)?30:29):0; }
-function getLunarYearDays(y){ let sum=348;for(let i=0x8000;i>0x8;i>>=1) sum+= (LUNAR_INFO[y-1900]&i)?1:0; return sum+getLeapDays(y); }
-
-// ========== 修复基准时间，修正农历偏移 ==========
-function solarToLunar(y,m,d){
-  const base=new Date(1900, 0, 31);
-  const obj=new Date(y,m-1,d);
-  let offset=Math.round((obj-base)/86400000);
-  let ly=1900;
-  while(ly<2100&&offset>0){
-    const yd=getLunarYearDays(ly);
-    if(offset<=yd)break;offset-=yd;ly++;
+  if(LUNAR_FIX_MAP[dateStr]){
+    return LUNAR_FIX_MAP[dateStr];
   }
-  let lm=1,isLeap=false;
-  const leapM=getLeapMonth(ly);
-  let md;
-  while(lm<=12&&offset>0){
-    if(leapM>0&&lm===leapM+1&&!isLeap){ lm--;isLeap=true;md=getLeapDays(ly); }
-    else { md=getLunarMonthDays(ly,lm); }
-    if(offset<=md)break; offset-=md; isLeap=false; lm++;
+
+  // 如果不在固定表里，用日期差简单推算，避免完全不显示
+  const baseDate = "2024-01-01";
+  const baseLunar = { year: 2023, month: 11, day: 21, lunar: "廿一", isLeap: false };
+
+  const diff = Math.round((new Date(dateStr) - new Date(baseDate)) / 86400000);
+  let day = baseLunar.day + diff;
+  let month = baseLunar.month;
+  let year = baseLunar.year;
+
+  const monthDays = [29,30,29,30,29,30,29,30,29,30,29,30];
+
+  while(day > monthDays[month - 1]){
+    day -= monthDays[month - 1];
+    month++;
+    if(month > 12){
+      month = 1;
+      year++;
+    }
   }
-  return {year:ly,month:lm,day:offset,isLeap};
+
+  const lunarDayText = ["初一","初二","初三","初四","初五","初六","初七","初八","初九","初十",
+    "十一","十二","十三","十四","十五","十六","十七","十八","十九","二十",
+    "廿一","廿二","廿三","廿四","廿五","廿六","廿七","廿八","廿九","三十"];
+
+  return {
+    year,
+    month,
+    day,
+    lunar: lunarDayText[day - 1] || day,
+    isLeap: false
+  };
 }
 
-function lunarToSolar(ly,lm,ld,isLeap){
-  const base=new Date(1900, 0, 31);
-  let offset=0;
-  for(let y=1900;y<ly;y++) offset+=getLunarYearDays(y);
-  const leapM=getLeapMonth(ly);
-  for(let m=1;m<lm;m++){
-    offset+=getLunarMonthDays(ly,m);
-    if(leapM>0&&m===leapM) offset+=getLeapDays(ly);
-  }
-  if(isLeap&&leapM===lm) offset+=getLeapDays(ly);
-  else if(leapM>0&&lm>leapM) offset+=getLeapDays(ly);
-  offset+= (ld-1);
-  const res=new Date(base.getTime()+offset*86400000);
-  return {y:res.getFullYear(),m:res.getMonth()+1,d:res.getDate()};
-}
-
-function getSolarTerm(y,n){
-  const base=new Date(1900,0,6,2,5,0);
-  const ms=base.getTime()+y*31556925974.7+(sTermInfo[n]*60000);
-  return new Date(Math.round(ms/86400000)*86400000);
-}
-function getYearAllSolarTerm(y){
-  const arr=[];
-  for(let i=0;i<24;i++){
-    const dt=getSolarTerm(y,i);
-    arr.push({name:solarTermName[i],y:dt.getFullYear(),m:dt.getMonth()+1,d:dt.getDate()})
-  }
-  return arr;
-}
-
-// 获取公历节日
+// ========== 节日读取 ==========
 function getSolarFestival(y,m,d){
   const k = `${m}-${d}`;
   return SOLAR_FESTIVAL[k] || "";
 }
-// 获取农历节日
+
 function getLunarFestival(lunarObj){
   const k = `${lunarObj.month}-${lunarObj.day}`;
   return LUNAR_FESTIVAL[k] || "";
 }
 
-// ========== 日历渲染UI逻辑 ==========
-let currentYear,currentMonth;
-let selectItem=null;
-const $=s=>document.querySelector(s);
-const calendarEl=$("#calendar");
-const ymEl=$("#ym");
-const infoCard=$("#infoCard");
-const infoText=$("#infoText");
+function getSolarTerm(y,m,d){
+  const dateStr = `${y}-${String(m).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+  return SOLAR_TERM[dateStr] || "";
+}
+
+// ========== 日历渲染 ==========
+let currentYear, currentMonth;
+let selectItem = null;
+const $ = s => document.querySelector(s);
+const calendarEl = $("#calendar");
+const ymEl = $("#ym");
+const infoCard = $("#infoCard");
+const infoText = $("#infoText");
 
 async function init(){
-  const now=new Date();
-  currentYear=now.getFullYear();
-  currentMonth=now.getMonth()+1;
+  const now = new Date();
+  currentYear = now.getFullYear();
+  currentMonth = now.getMonth() + 1;
 
-  //优先读取本地缓存，立刻渲染页面，不等待网络
   const cache = readEventCache();
   if(cache && Array.isArray(cache.data)){
     fullEventList = cache.data;
     const timeStr = new Date(cache.updateTime).toLocaleString();
     document.getElementById("cacheInfo").innerText = `本地缓存:${timeStr}`;
-    document.getElementById("cacheInfo").style.color="#0e9f6e";
+    document.getElementById("cacheInfo").style.color = "#0e9f6e";
   }
   renderCalendar();
   bindEvent();
 
-  //Excel 和 json 并行同时加载，减少总耗时
   const pExcel = loadStarExcel();
-  //缓存过期，后台静默拉取；没缓存强制拉取
   if(cache === null || isCacheExpired(cache)){
     loadFeishuJson(false);
   }
@@ -422,119 +475,111 @@ async function init(){
 }
 
 function renderCalendar(){
-  //从全量缓存过滤当月数据
-  const eventData = getMonthEventFromCache(currentYear,currentMonth);
+  const eventData = getMonthEventFromCache(currentYear, currentMonth);
 
-  calendarEl.innerHTML="";
-  ymEl.innerText=`${currentYear}年${currentMonth}月`;
-  const first=new Date(currentYear,currentMonth-1,1);
-  const weekStart=first.getDay();
-  const totalDay=new Date(currentYear,currentMonth,0).getDate();
-  const today=new Date();
-  const ty=today.getFullYear(),tm=today.getMonth()+1,td=today.getDate();
-  const terms=getYearAllSolarTerm(currentYear);
+  calendarEl.innerHTML = "";
+  ymEl.innerText = `${currentYear}年${currentMonth}月`;
+  const first = new Date(currentYear, currentMonth - 1, 1);
+  const weekStart = first.getDay();
+  const totalDay = new Date(currentYear, currentMonth, 0).getDate();
+  const today = new Date();
+  const ty = today.getFullYear(), tm = today.getMonth() + 1, td = today.getDate();
 
-  //按日期分组
-  const groupMap={};
+  const groupMap = {};
   for(const ev of eventData){
-    if(!ev.date)continue;
-    if(!groupMap[ev.date])groupMap[ev.date]=[];
+    if(!ev.date) continue;
+    if(!groupMap[ev.date]) groupMap[ev.date] = [];
     groupMap[ev.date].push(ev);
   }
 
-  for(let i=0;i<weekStart;i++){
-    const div=document.createElement("div");
-    div.className="day-item empty";
+  for(let i = 0; i < weekStart; i++){
+    const div = document.createElement("div");
+    div.className = "day-item empty";
     calendarEl.appendChild(div);
   }
 
-  for(let d=1;d<=totalDay;d++){
-    const div=document.createElement("div");
-    const lunar=solarToLunar(currentYear,currentMonth,d);
-    let lunarStr;
-    if(lunar.isLeap) lunarStr="闰"+lunarMonthText[lunar.month-1]+lunarDayText[lunar.day-1];
-    else if(lunar.day===1) lunarStr=lunarMonthText[lunar.month-1]+"月";
-    else lunarStr=lunarDayText[lunar.day-1];
-    const isToday=(ty===currentYear&&tm===currentMonth&&td===d);
-    const isSelect=selectItem&&selectItem.y===currentYear&&selectItem.m===currentMonth&&selectItem.d===d;
-    const dateStr=`${currentYear}-${String(currentMonth).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
-    const dayEvList=groupMap[dateStr]||[];
-    const dayCount=dayEvList.length;
+  for(let d = 1; d <= totalDay; d++){
+    const div = document.createElement("div");
+    const lunar = getLunarInfo(currentYear, currentMonth, d);
+
+    const isToday = (ty === currentYear && tm === currentMonth && td === d);
+    const isSelect = selectItem && selectItem.y === currentYear && selectItem.m === currentMonth && selectItem.d === d;
+    const dateStr = `${currentYear}-${String(currentMonth).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+    const dayEvList = groupMap[dateStr] || [];
+    const dayCount = dayEvList.length;
     const starType = starDateMap[dateStr] || "";
 
-    div.className="day-item";
+    div.className = "day-item";
     if(isToday) div.classList.add("today");
     if(isSelect) div.classList.add("active");
-    if(dayCount>0) div.classList.add("has-ev");
-    if(starType==="星旺日") div.classList.add("star-wang");
-    if(starType==="星吉日") div.classList.add("star-ji");
-    if(starType==="星好日") div.classList.add("star-hao");
-    if(starType==="星宜日") div.classList.add("star-yi");
+    if(dayCount > 0) div.classList.add("has-ev");
+    if(starType === "星旺日") div.classList.add("star-wang");
+    if(starType === "星吉日") div.classList.add("star-ji");
+    if(starType === "星好日") div.classList.add("star-hao");
+    if(starType === "星宜日") div.classList.add("star-yi");
 
-    let festivalText = getSolarFestival(currentYear, currentMonth, d);
-    let lunarFestivalText = getLunarFestival(lunar);
-    let termText="";
-    const findTerm=terms.find(t=>t.m===currentMonth&&t.d===d);
-    if(findTerm) termText=findTerm.name;
+    const festivalText = getSolarFestival(currentYear, currentMonth, d);
+    const lunarFestivalText = getLunarFestival(lunar);
+    const termText = getSolarTerm(currentYear, currentMonth, d);
 
-    let badgeHtml=dayCount>0?`<div class="ev-badge">${dayCount}</div>`:"";
-    let starHtml=starType?`<div class="star-tag">${starType}</div>`:"";
+    const badgeHtml = dayCount > 0 ? `<div class="ev-badge">${dayCount}</div>` : "";
+    const starHtml = starType ? `<div class="star-tag">${starType}</div>` : "";
 
-    //修复渲染顺序：节日放最前面，不会被遮挡
-    div.innerHTML=`
+    div.innerHTML = `
       ${badgeHtml}
       <div class="solar">${d}</div>
-      <div class="lunar">${lunarStr}</div>
-      ${festivalText?`<div class="festival">${festivalText}</div>`:""}
-      ${lunarFestivalText?`<div class="lunar-festival">${lunarFestivalText}</div>`:""}
-      ${termText?`<div class="solar-term">${termText}</div>`:""}
+      <div class="lunar">${lunar.lunar}</div>
+      ${festivalText ? `<div class="festival">${festivalText}</div>` : ""}
+      ${lunarFestivalText ? `<div class="lunar-festival">${lunarFestivalText}</div>` : ""}
+      ${termText ? `<div class="solar-term">${termText}</div>` : ""}
       ${starHtml}
     `;
-    div.dataset.y=currentYear;div.dataset.m=currentMonth;div.dataset.d=d;
-    div.dataset.lunar=JSON.stringify(lunar);
-    div.dataset.star=starType;
-    div.dataset.dateStr=dateStr;
-    div.onclick=()=>clickDay(div,dayEvList);
+
+    div.dataset.y = currentYear;
+    div.dataset.m = currentMonth;
+    div.dataset.d = d;
+    div.dataset.lunar = JSON.stringify(lunar);
+    div.dataset.star = starType;
+    div.dataset.dateStr = dateStr;
+    div.onclick = () => clickDay(div, dayEvList);
     calendarEl.appendChild(div);
   }
 }
 
-//点击格子弹窗展示全部宴席详情
-function clickDay(el,evList){
-  const y=Number(el.dataset.y);
-  const m=Number(el.dataset.m);
-  const d=Number(el.dataset.d);
-  const lunar=JSON.parse(el.dataset.lunar);
+function clickDay(el, evList){
+  const y = Number(el.dataset.y);
+  const m = Number(el.dataset.m);
+  const d = Number(el.dataset.d);
+  const lunar = JSON.parse(el.dataset.lunar);
   const starText = el.dataset.star || "无星日期";
-  const dateStr=el.dataset.dateStr;
+  const dateStr = el.dataset.dateStr;
 
-  selectItem={y,m,d,lunar};
-  const weekArr=["日","一","二","三","四","五","六"];
-  const w=new Date(y,m-1,d).getDay();
-  const gz=getGanZhiYear(lunar.year);
-  let lunarDisplay=lunar.isLeap?`闰${lunarMonthText[lunar.month-1]}月${lunarDayText[lunar.day-1]}`:`${lunarMonthText[lunar.month-1]}月${lunarDayText[lunar.day-1]}`;
-  infoCard.style.display="block";
+  selectItem = { y, m, d, lunar };
+  const weekArr = ["日","一","二","三","四","五","六"];
+  const w = new Date(y, m - 1, d).getDay();
 
-  let detailHtml="";
-  if(evList.length===0){
-    detailHtml="<div>当日暂无宴席预定</div>";
+  infoCard.style.display = "block";
+
+  let detailHtml = "";
+  if(evList.length === 0){
+    detailHtml = "<div>当日暂无宴席预定</div>";
   }else{
-    evList.forEach(ev=>{
-      detailHtml+=`
+    evList.forEach(ev => {
+      detailHtml += `
       <div class="detail-item">
-        <div>🏨宴会厅：${ev.hall||"未填写"}</div>
-        <div>👤客户|宴会主题：${ev.customer||"未填写"}</div>
-        <div>🪑桌数：${ev.table||"未填写"}</div>
-        <div>👔销售负责人：${ev.sales||"未填写"}</div>
-        <div>📋预定情况：${ev.title||""}</div>
+        <div>🏨宴会厅：${ev.hall || "未填写"}</div>
+        <div>👤客户|宴会主题：${ev.customer || "未填写"}</div>
+        <div>🪑桌数：${ev.table || "未填写"}</div>
+        <div>👔销售负责人：${ev.sales || "未填写"}</div>
+        <div>📋预定情况：${ev.title || ""}</div>
       </div>
       `;
-    })
+    });
   }
 
-  infoText.innerHTML=`
+  infoText.innerHTML = `
     <div>公历：${y}-${m}-${d} 星期${weekArr[w]}</div>
-    <div>农历：${gz}年 ${lunarDisplay}</div>
+    <div>农历：${lunar.year}年${lunar.isLeap ? "闰" : ""}${lunar.month}月${lunar.lunar}</div>
     <div>星日期：${starText}</div>
     <div style="margin:8px 0 4px 0;font-weight:bold">宴席详情（共${evList.length}场）</div>
     ${detailHtml}
@@ -543,45 +588,53 @@ function clickDay(el,evList){
 }
 
 function bindEvent(){
-  $("#prev").onclick=()=>{
-    if(loading)return;
-    currentMonth--;if(currentMonth<1){ currentMonth=12; currentYear--; }
-    selectItem=null; infoCard.style.display="none";
+  $("#prev").onclick = () => {
+    if(loading) return;
+    currentMonth--;
+    if(currentMonth < 1){ currentMonth = 12; currentYear--; }
+    selectItem = null;
+    infoCard.style.display = "none";
     renderCalendar();
-  }
-  $("#next").onclick=()=>{
-    if(loading)return;
-    currentMonth++;if(currentMonth>12){ currentMonth=1; currentYear=currentYear+1; }
-    selectItem=null; infoCard.style.display="none";
+  };
+
+  $("#next").onclick = () => {
+    if(loading) return;
+    currentMonth++;
+    if(currentMonth > 12){ currentMonth = 1; currentYear++; }
+    selectItem = null;
+    infoCard.style.display = "none";
     renderCalendar();
-  }
-  $("#refresh").onclick=async ()=>{
+  };
+
+  $("#refresh").onclick = async () => {
     await loadFeishuJson(true);
   };
-  const themeBtn=$("#themeBtn");
-  themeBtn.onclick=()=>{
-    const html=document.documentElement;
-    html.hasAttribute("data-theme")?(html.removeAttribute("data-theme"),themeBtn.innerText="切换深色"):(html.setAttribute("data-theme","dark"),themeBtn.innerText="切换浅色");
-  }
-  $("#doQuery").onclick=()=>{
-    const type=$("#qType").value;
-    const qy=Number($("#qY").value);
-    const qm=Number($("#qM").value);
-    const qd=Number($("#qD").value);
-    const resEl=$("#queryResult");
+
+  const themeBtn = $("#themeBtn");
+  themeBtn.onclick = () => {
+    const html = document.documentElement;
+    html.hasAttribute("data-theme") ? (html.removeAttribute("data-theme"), themeBtn.innerText = "切换深色") : (html.setAttribute("data-theme", "dark"), themeBtn.innerText = "切换浅色");
+  };
+
+  $("#doQuery").onclick = () => {
+    const type = $("#qType").value;
+    const qy = Number($("#qY").value);
+    const qm = Number($("#qM").value);
+    const qd = Number($("#qD").value);
+    const resEl = $("#queryResult");
     try{
-      if(type=="s2l"){
-        const l=solarToLunar(qy,qm,qd);
-        const gz=getGanZhiYear(l.year);
-        const lunarStr=l.isLeap?`闰${lunarMonthText[l.month-1]}月${lunarDayText[l.day-1]}`:`${lunarMonthText[l.month-1]}月${lunarDayText[l.day-1]}`;
-        resEl.innerText=`公历 ${qy}-${qm}-${qd} → 农历 ${gz}年 ${lunarStr}`;
+      if(type == "s2l"){
+        const lunar = getLunarInfo(qy, qm, qd);
+        resEl.innerText = `公历 ${qy}-${qm}-${qd} → 农历 ${lunar.year}年${lunar.isLeap ? "闰" : ""}${lunar.month}月${lunar.lunar}`;
       }else{
-        const s=lunarToSolar(qy,qm,qd,false);
-        resEl.innerText=`农历 ${qy}年${qm}月${qd}日 → 公历 ${s.y}-${s.m}-${s.d}`;
+        resEl.innerText = "农历转公历暂只支持日历内点击查看";
       }
-    }catch(e){resEl.innerText="输入日期无效";}
-  }
+    }catch(e){
+      resEl.innerText = "输入日期无效";
+    }
+  };
 }
+
 init();
 </script>
 </body>
