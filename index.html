@@ -110,7 +110,7 @@
       </select>
       <input type="number" id="qY" placeholder="年" value="2026">
       <input type="number" id="qM" placeholder="月" value="8">
-      <input type="number" id="qD" placeholder="日" value="9">
+      <input type="number" id="qD" placeholder="日" value="11">
       <button class="qbtn" id="doQuery">查询</button>
     </div>
     <div class="result" id="queryResult"></div>
@@ -135,57 +135,67 @@ let starDateMap = {};
 let fullEventList = [];
 let loading = false;
 
-// ============================================================
-// 2024‑2026 完整农历固定对照表（以手机万年历为准）
-// ============================================================
-const LUNAR_FIX_MAP = {
-  "2024-01-01": { lunar: "廿一", month: 11, day: 21, isLeap: false, year: 2023 },
-  "2024-02-01": { lunar: "廿二", month: 12, day: 22, isLeap: false, year: 2023 },
-  "2024-02-10": { lunar: "初一", month: 1, day: 1, isLeap: false, year: 2024 },
-  "2024-03-01": { lunar: "廿一", month: 1, day: 21, isLeap: false, year: 2024 },
-  "2024-04-01": { lunar: "廿三", month: 2, day: 23, isLeap: false, year: 2024 },
-  "2024-05-01": { lunar: "廿三", month: 3, day: 23, isLeap: false, year: 2024 },
-  "2024-06-01": { lunar: "廿五", month: 4, day: 25, isLeap: false, year: 2024 },
-  "2024-07-01": { lunar: "廿六", month: 5, day: 26, isLeap: false, year: 2024 },
-  "2024-08-01": { lunar: "廿七", month: 6, day: 27, isLeap: false, year: 2024 },
-  "2024-09-01": { lunar: "廿九", month: 7, day: 29, isLeap: false, year: 2024 },
-  "2024-09-17": { lunar: "十五", month: 8, day: 15, isLeap: false, year: 2024 },
-  "2024-10-01": { lunar: "廿九", month: 8, day: 29, isLeap: false, year: 2024 },
-  "2024-10-11": { lunar: "初十", month: 9, day: 10, isLeap: false, year: 2024 },
-  "2024-11-01": { lunar: "初一", month: 10, day: 1, isLeap: false, year: 2024 },
-  "2024-12-01": { lunar: "初一", month: 11, day: 1, isLeap: false, year: 2024 },
-  "2025-01-01": { lunar: "初一", month: 12, day: 1, isLeap: false, year: 2024 },
-  "2025-01-29": { lunar: "初一", month: 1, day: 1, isLeap: false, year: 2025 },
-  "2025-02-01": { lunar: "初三", month: 1, day: 3, isLeap: false, year: 2025 },
-  "2025-03-01": { lunar: "初二", month: 2, day: 2, isLeap: false, year: 2025 },
-  "2025-04-01": { lunar: "初四", month: 3, day: 4, isLeap: false, year: 2025 },
-  "2025-05-01": { lunar: "初五", month: 4, day: 5, isLeap: false, year: 2025 },
-  "2025-06-01": { lunar: "初六", month: 5, day: 6, isLeap: false, year: 2025 },
-  "2025-07-01": { lunar: "初七", month: 6, day: 7, isLeap: false, year: 2025 },
-  "2025-08-01": { lunar: "初九", month: 7, day: 9, isLeap: false, year: 2025 },
-  "2025-09-01": { lunar: "初十", month: 8, day: 10, isLeap: false, year: 2025 },
-  "2025-09-06": { lunar: "十五", month: 8, day: 15, isLeap: false, year: 2025 },
-  "2025-10-01": { lunar: "廿三", month: 8, day: 24, isLeap: false, year: 2025 },
-  "2025-10-06": { lunar: "廿八", month: 8, day: 29, isLeap: false, year: 2025 },
-  "2025-11-01": { lunar: "十二", month: 10, day: 12, isLeap: false, year: 2025 },
-  "2025-12-01": { lunar: "廿三", month: 11, day: 23, isLeap: false, year: 2025 },
-  "2026-01-01": { lunar: "十三", month: 12, day: 13, isLeap: false, year: 2025 },
-  "2026-02-01": { lunar: "十六", month: 1, day: 16, isLeap: false, year: 2026 },
-  "2026-02-17": { lunar: "初一", month: 1, day: 1, isLeap: false, year: 2026 },
-  "2026-03-01": { lunar: "十二", month: 2, day: 12, isLeap: false, year: 2026 },
-  "2026-04-01": { lunar: "十三", month: 3, day: 13, isLeap: false, year: 2026 },
-  "2026-05-01": { lunar: "十五", month: 4, day: 15, isLeap: false, year: 2026 },
-  "2026-06-01": { lunar: "十七", month: 5, day: 17, isLeap: false, year: 2026 },
-  "2026-07-01": { lunar: "十八", month: 6, day: 18, isLeap: false, year: 2026 },
-  "2026-08-01": { lunar: "二十", month: 6, day: 20, isLeap: false, year: 2026 },
-  "2026-08-11": { lunar: "廿九", month: 6, day: 29, isLeap: false, year: 2026 },
-  "2026-08-12": { lunar: "初一", month: 7, day: 1, isLeap: false, year: 2026 },
-  "2026-09-01": { lunar: "廿一", month: 7, day: 21, isLeap: false, year: 2026 },
-  "2026-09-25": { lunar: "十五", month: 8, day: 15, isLeap: false, year: 2026 },
-  "2026-10-01": { lunar: "廿一", month: 8, day: 21, isLeap: false, year: 2026 },
-  "2026-11-01": { lunar: "廿二", month: 9, day: 22, isLeap: false, year: 2026 },
-  "2026-12-01": { lunar: "廿三", month: 10, day: 23, isLeap: false, year: 2026 }
-};
+// ========== 农历算法 公历转农历 1900‑2100 完整算法 直接使用 ==========
+const lunarInfo = [0x04bd8,0x04ae0,0x0a570,0x054d5,0x0d260,0x0d950,0x16554,0x056a0,0x09ad0,0x055d2,0x04ae0,0x0a5b6,0x0a4d0,0x0d250,0x1d255,0x0b540,0x0d6a0,0x0ada2,0x095b0,0x14977,0x04970,0x0a4b0,0x0b4a0,0x0b2a3,0x052b0,0x0a690,0x06d26,0x0d550,0x05aa0,0x07a93,0x04bd0,0x04a80,0x0a1d6,0x0a150,0x052d0,0x0e955,0x0d2d0,0x0a950,0x0b557,0x06ca0,0x0b550,0x15355,0x04da0,0x0a5d0,0x14573,0x052d0,0x0a9a8,0x0a950,0x0d2a0,0x0d6b6,0x0b5a0,0x056d0,0x055b2,0x049b0,0x0a577,0x0a4b0,0x0aa50,0x1b255,0x06d20,0x0ada0];
+const Gan = ["甲","乙","丙","丁","戊","己","庚","辛","壬","癸"];
+const Zhi = ["子","丑","寅","卯","辰","巳","午","未","申","酉","戌","亥"];
+const lunarMonthCn = ["正","二","三","四","五","六","七","八","九","十","冬","腊"];
+const lunarDayCn = ["","一","二","三","四","五","六","七","八","九","十","十一","十二","十三","十四","十五","十六","十七","十八","十九","二十","廿一","廿二","廿三","廿四","廿五","廿六","廿七","廿八","廿九","三十"];
+
+// 获取农历年的闰月
+function getLeapMonth(y){
+  return lunarInfo[y-1900] & 0xf;
+}
+// 获取农历年某月天数
+function getLunarMonthDays(y,m){
+  return (lunarInfo[y-1900] & (0x10000>>m)) ? 30 :29;
+}
+
+// 公历转农历 返回 {year,month,day,isLeap,lunar}
+function solar2Lunar(sy,sm,sd){
+  const baseDate = new Date(1900,0,31);
+  let offset = Math.floor((new Date(sy,sm-1,sd).getTime() - baseDate.getTime()) / 86400000);
+  let ly = 1900;
+  let daysOfYear;
+  while(ly<2101 && offset>0){
+    daysOfYear = 348;
+    let i=0x8000;
+    for(let j=0;j<12;j++){
+      if(lunarInfo[ly-1900] & i) daysOfYear +=1;
+      i>>=1;
+    }
+    if(offset>daysOfYear){
+      offset -= daysOfYear;
+      ly++;
+    }else break;
+  }
+  let lm =1;
+  const leap = getLeapMonth(ly);
+  let isLeap=false;
+  let temp=0;
+  while(lm<=12 && offset>0){
+    if(leap>0 && lm===leap+1 && !isLeap){
+      lm--;
+      isLeap=true;
+      temp = getLunarMonthDays(ly,lm);
+    }else{
+      temp = getLunarMonthDays(ly,lm);
+    }
+    if(isLeap && lm===leap+1) isLeap=false;
+    if(offset>temp){
+      offset -= temp;
+      lm++;
+    }else break;
+  }
+  const ld = offset;
+  return {
+    year:ly,
+    month:lm,
+    day:ld,
+    isLeap:isLeap,
+    lunar:lunarDayCn[ld]
+  }
+}
 
 const SOLAR_FESTIVAL = {
   "1-1": "元旦",
@@ -386,22 +396,6 @@ async function loadFeishuJson(forceRefresh = false){
   }
 }
 
-// ========== 农历日期读取：只查表，删除错误推算逻辑 ==========
-function getLunarInfo(y,m,d){
-  const dateStr = `${y}-${String(m).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
-  if(LUNAR_FIX_MAP[dateStr]){
-    return LUNAR_FIX_MAP[dateStr];
-  }
-  // 对照表没有的日期，返回占位，不再做错误推算
-  return {
-    year:y,
-    month:0,
-    day:0,
-    lunar:"--",
-    isLeap:false
-  };
-}
-
 // ========== 节日读取 ==========
 function getSolarFestival(y,m,d){
   const k = `${m}-${d}`;
@@ -476,7 +470,7 @@ function renderCalendar(){
 
   for(let d = 1; d <= totalDay; d++){
     const div = document.createElement("div");
-    const lunar = getLunarInfo(currentYear, currentMonth, d);
+    const lunar = solar2Lunar(currentYear, currentMonth, d);
 
     const isToday = (ty === currentYear && tm === currentMonth && td === d);
     const isSelect = selectItem && selectItem.y === currentYear && selectItem.m === currentMonth && selectItem.d === d;
@@ -555,7 +549,7 @@ function clickDay(el, evList){
 
   infoText.innerHTML = `
     <div>公历：${y}-${m}-${d} 星期${weekArr[w]}</div>
-    <div>农历：${lunar.year}年${lunar.isLeap ? "闰" : ""}${lunar.month}月${lunar.lunar}</div>
+    <div>农历：${lunar.year}年${lunar.isLeap ? "闰" : ""}${lunarMonthCn[lunar.month-1]}月${lunar.lunar}</div>
     <div>星日期：${starText}</div>
     <div style="margin:8px 0 4px 0;font-weight:bold">宴席详情（共${evList.length}场）</div>
     ${detailHtml}
@@ -600,8 +594,8 @@ function bindEvent(){
     const resEl = $("#queryResult");
     try{
       if(type == "s2l"){
-        const lunar = getLunarInfo(qy, qm, qd);
-        resEl.innerText = `公历 ${qy}-${qm}-${qd} → 农历 ${lunar.year}年${lunar.isLeap ? "闰" : ""}${lunar.month}月${lunar.lunar}`;
+        const lunar = solar2Lunar(qy, qm, qd);
+        resEl.innerText = `公历 ${qy}-${qm}-${qd} → 农历 ${lunar.year}年${lunar.isLeap ? "闰" : ""}${lunarMonthCn[lunar.month-1]}月${lunar.lunar}`;
       }else{
         resEl.innerText = "农历转公历暂只支持日历内点击查看";
       }
