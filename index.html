@@ -121,10 +121,8 @@
 </div>
 <script>
 // ============================================================
-// 【配置区】
+// 【配置区】飞书静态json + 星日期Excel
 // ============================================================
-const WORKER_PROXY = "https://curly-limit-ea68.244671681.workers.dev"; //替换为你的Worker地址
-
 const STAR_EXCEL_CONFIG = {
   url: "./star.xlsx",
   sheetName: "",
@@ -132,23 +130,11 @@ const STAR_EXCEL_CONFIG = {
   starColumn: 1,
   skipHeader: true
 };
-
-const JDY_CONFIG = {
-  API_KEY: "QMX6XTmsa2s2h3nBy8kDIc1zmmBNSB1mb938E5999123010aDeEfEdDFC6804aCfE",
-  APP_ID: "6738d31983d95dbc550e89e0",
-  ENTRY_ID: "6a5592dfee45842efb1d91f6",
-  dateField: "宴席日期",
-  hallField:"宴会厅",
-  customerField:"客户名称",
-  tableField:"桌数",
-  titleField: "预定情况"
-};
-const JDY_API_BASE = "https://api.jiandaoyun.com/api/v5/app";
-
-const LOCAL_STORAGE_KEY = "jdy_full_event_cache";
+const FESHU_JSON_URL = "./feishu_data.json";
+const LOCAL_STORAGE_KEY = "feishu_banquet_cache";
 
 let starDateMap = {};
-/** 全部宴席缓存，全量拉取，切换月份直接过滤本地数组，不再请求接口 */
+/** 全部宴席缓存，切换月份直接本地过滤，无网络请求 */
 let fullEventList = [];
 let loading = false;
 
@@ -235,62 +221,31 @@ function getMonthRange(y,m){
 }
 
 /**
- * 全量拉取简道云全部数据（分页循环拉取所有记录）
- * 点击【刷新宴席数据】触发，拉完存入localStorage本地缓存
+ * 读取飞书导出静态json文件
  */
-async function fetchJdyAllEvents(){
+async function loadFeishuJson(){
   if(loading) return;
   loading=true;
   const loadStatus=document.getElementById("loadStatus");
   const cacheInfo=document.getElementById("cacheInfo");
-  loadStatus.innerText="正在全量拉取简道云所有宴席数据...";
-  let allList=[];
-  let pageIndex=1;
-  const pageSize=1000;
+  loadStatus.innerText="正在读取feishu_data.json宴席数据...";
   try{
-    while(true){
-      const payload={
-        mode:"jiandao",
-        jdyUrl:`${JDY_API_BASE}/${JDY_CONFIG.APP_ID}/entry/${JDY_CONFIG.ENTRY_ID}/data/list`,
-        apiKey:JDY_CONFIG.API_KEY,
-        body:{
-          limit:pageSize,
-          page:pageIndex,
-          filter:null
-        }
-      };
-      const resp = await fetch(WORKER_PROXY, {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify(payload)
-      });
-      const json=await resp.json();
-      if(json.code!==0){
-        throw new Error(json.msg||JSON.stringify(json));
+    const resp = await fetch(FESHU_JSON_URL);
+    if(!resp.ok) throw new Error(`文件读取失败 ${resp.status}，确认feishu_data.json和index.html放在同一目录`);
+    const rawArr = await resp.json();
+    //字段转换，适配日历内部字段
+    const formatList = rawArr.map(item=>{
+      return {
+        date: item["宴会日期"] || "",
+        hall: item["宴会厅"] || "",
+        customer: item["客户|宴会主题"] || "",
+        table: item["桌数"] || "",
+        sales: item["销售负责人"] || "",
+        title: item["预定情况"] || ""
       }
-      const list=json.data?.list||[];
-      if(list.length===0) break;
-      //格式化每条记录
-      const formatList = list.map(item=>{
-        const rawDate = item.data[JDY_CONFIG.dateField];
-        return {
-          date: rawDate ? rawDate.split(" ")[0] : "",
-          hall:item.data[JDY_CONFIG.hallField]||"",
-          customer:item.data[JDY_CONFIG.customerField]||"",
-          table:item.data[JDY_CONFIG.tableField]||"",
-          title: item.data[JDY_CONFIG.titleField] || ""
-        }
-      }).filter(item=>item.date);
-      allList = allList.concat(formatList);
-      //判断是否还有下一页
-      const total = json.data?.total||0;
-      if(allList.length >= total) break;
-      pageIndex++;
-    }
-    //全部拉取完成，赋值内存变量，存入本地缓存
-    fullEventList = allList;
+    }).filter(item=>!!item.date);
+
+    fullEventList = formatList;
     saveEventCache(fullEventList);
     const time = new Date().toLocaleString();
     cacheInfo.innerText = `缓存更新:${time}`;
@@ -298,9 +253,9 @@ async function fetchJdyAllEvents(){
     renderCalendar();
     loadStatus.innerText=`✅已同步全部宴席${fullEventList.length}条`;
   }catch(err){
-    alert("全量拉取简道云失败："+err.message);
+    alert("读取feishu_data.json失败："+err.message);
     console.error(err);
-    loadStatus.innerText="❌拉取失败";
+    loadStatus.innerText="❌读取json失败";
   }finally{
     loading=false;
   }
@@ -403,7 +358,8 @@ async function init(){
   renderCalendar();
   bindEvent();
   await loadStarExcel();
-  //页面初始化不自动请求接口，需要手动点刷新拉取最新
+  //页面初始化读取json
+  await loadFeishuJson();
   renderCalendar();
 }
 
@@ -484,7 +440,7 @@ function renderCalendar(){
   }
 }
 
-//点击格子弹窗展示全部宴席详情
+//点击格子弹窗展示全部宴席详情（新增销售负责人字段）
 function clickDay(el,evList){
   const y=Number(el.dataset.y);
   const m=Number(el.dataset.m);
@@ -508,8 +464,9 @@ function clickDay(el,evList){
       detailHtml+=`
       <div class="detail-item">
         <div>🏨宴会厅：${ev.hall||"未填写"}</div>
-        <div>👤客户名称：${ev.customer||"未填写"}</div>
+        <div>👤客户|宴会主题：${ev.customer||"未填写"}</div>
         <div>🪑桌数：${ev.table||"未填写"}</div>
+        <div>👔销售负责人：${ev.sales||"未填写"}</div>
         <div>📋预定情况：${ev.title||""}</div>
       </div>
       `;
@@ -541,9 +498,9 @@ function bindEvent(){
     renderCalendar();
     //切换月份：完全本地过滤，无任何网络请求
   }
-  //点击刷新，执行全量拉取简道云全部记录，更新本地缓存
+  //点击刷新，重新读取feishu_data.json
   $("#refresh").onclick=async ()=>{
-    await fetchJdyAllEvents();
+    await loadFeishuJson();
   };
   const themeBtn=$("#themeBtn");
   themeBtn.onclick=()=>{
