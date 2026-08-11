@@ -134,7 +134,6 @@ const CACHE_TTL = 5 * 60 * 1000;
 let starDateMap = {};
 let fullEventList = [];
 let loading = false;
-
 // ========== 完整正确的公历转农历函数，直接全量替换原有旧农历代码 ==========
 const lunarInfo = [
     0x04bd8,0x04ae0,0x0a570,0x054d5,0x0d260,0x0d950,0x16554,0x056a0,0x09ad0,0x055d2,
@@ -230,9 +229,6 @@ function getLeapDays(y) {
 function getLunarMonthDays(y,m) {
     return (lunarInfo[y-1900] & (0x10000>>m)) ?30:29;
 }
-// ========== 函数结束 ==========
-
-
 // ========== 本地缓存工具 ==========
 function saveEventCache(list){
   localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify({
