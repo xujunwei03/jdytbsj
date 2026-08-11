@@ -66,6 +66,7 @@
     .lunar{font-size:11px;color:var(--text3);margin-top:2px}
     .festival{font-size:10px;color:#f5222d}
     .solar-term{font-size:10px;color:#009688}
+    .lunar-festival{font-size:10px;color:#d92121}
     .ev-tag{font-size:9px;color:#d4380d;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .star-tag{font-size:9px;font-weight:bold;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
     /*宴席数量角标*/
@@ -274,7 +275,7 @@ async function loadFeishuJson(forceRefresh=false){
   }
 }
 
-// ====================== 修复版农历库 ======================
+// ====================== 【修复】校正版农历库，修复慢10天偏移 ======================
 const LUNAR_INFO = [
   0x04bd8,0x04ae0,0x0a570,0x054d5,0x0d260,0x0d950,0x16554,0x056a0,0x09ad0,0x055d2,
   0x04ae0,0x0a5b6,0x0a4d0,0x0d250,0x1d255,0x0b540,0x0d6a0,0x0ada2,0x095b0,0x14977,
@@ -305,6 +306,17 @@ const SOLAR_FESTIVAL = {
   "6‑1":"儿童节",
   "10‑1":"国庆节"
 };
+// 农历传统节日 [月,日]:名称
+const LUNAR_FESTIVAL = {
+  "1‑1":"春节",
+  "1‑15":"元宵节",
+  "5‑5":"端午节",
+  "7‑7":"七夕",
+  "8‑15":"中秋节",
+  "9‑9":"重阳节",
+  "12‑8":"腊八",
+  "12‑30":"除夕"
+};
 
 function getGanZhiYear(y){ return Gan[(y-4)%10]+Zhi[(y-4)%12]; }
 function getLeapMonth(y){ return LUNAR_INFO[y-1900] & 0xf; }
@@ -312,8 +324,9 @@ function getLunarMonthDays(y,m){ return (LUNAR_INFO[y-1900] & (0x10000>>m))?30:2
 function getLeapDays(y){ const lm=getLeapMonth(y); return lm?((LUNAR_INFO[y-1900]&0x10000)?30:29):0; }
 function getLunarYearDays(y){ let sum=348;for(let i=0x8000;i>0x8;i>>=1) sum+= (LUNAR_INFO[y-1900]&i)?1:0; return sum+getLeapDays(y); }
 
+// ========== 修复基准时间，修正农历偏移10天 ==========
 function solarToLunar(y,m,d){
-  const base=new Date(1900,0,31);
+  const base=new Date(1900, 0, 30);
   const obj=new Date(y,m-1,d);
   let offset=Math.round((obj-base)/86400000);
   let ly=1900;
@@ -333,7 +346,7 @@ function solarToLunar(y,m,d){
 }
 
 function lunarToSolar(ly,lm,ld,isLeap){
-  const base=new Date(1900,0,31);
+  const base=new Date(1900, 0, 30);
   let offset=0;
   for(let y=1900;y<ly;y++) offset+=getLunarYearDays(y);
   const leapM=getLeapMonth(ly);
@@ -366,6 +379,11 @@ function getYearAllSolarTerm(y){
 function getSolarFestival(y,m,d){
   const k = `${m}-${d}`;
   return SOLAR_FESTIVAL[k] || "";
+}
+// 获取农历节日
+function getLunarFestival(lunarObj){
+  const k = `${lunarObj.month}-${lunarObj.day}`;
+  return LUNAR_FESTIVAL[k] || "";
 }
 
 // ========== 日历渲染UI逻辑 ==========
@@ -454,6 +472,7 @@ function renderCalendar(){
     if(starType==="星宜日") div.classList.add("star-yi");
 
     let festivalText = getSolarFestival(currentYear, currentMonth, d);
+    let lunarFestivalText = getLunarFestival(lunar);
     let termText="";
     const findTerm=terms.find(t=>t.m===currentMonth&&t.d===d);
     if(findTerm) termText=findTerm.name;
@@ -464,8 +483,9 @@ function renderCalendar(){
     div.innerHTML=`
       <div class="solar">${d}</div>
       <div class="lunar">${lunarStr}</div>
-      ${festivalText?`<div class="festival">${festivalText}</div>`:""}
       ${termText?`<div class="solar-term">${termText}</div>`:""}
+      ${lunarFestivalText?`<div class="lunar-festival">${lunarFestivalText}</div>`:""}
+      ${festivalText?`<div class="festival">${festivalText}</div>`:""}
       ${starHtml}
       ${badgeHtml}
     `;
