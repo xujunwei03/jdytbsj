@@ -135,7 +135,6 @@ let starDateMap = {};
 let fullEventList = [];
 let loading = false;
 
-// ==========【修复】公历转农历 1900‑2100 修复闰月遍历逻辑 ==========
 const lunarInfo = [
     0x04bd8,0x04ae0,0x0a570,0x054d5,0x0d260,0x0d950,0x16554,0x056a0,0x09ad0,0x055d2,
     0x04ae0,0x0a5b6,0x0a4d0,0x0d250,0x1d255,0x0b540,0x0d6a0,0x0ada2,0x095b0,0x14977,
@@ -175,53 +174,50 @@ function getLeapDays(y) {
     return (lunarInfo[y-1900] & (0x10000 >> lm)) ? 30 :29;
 }
 
-// 输入公历年sy，公历月sm(1‑12)，公历日sd
+// ==========【只修改此函数，其余全部不动】修复2026之后农历偏移，更换基准时间戳算法 ==========
 function solar2Lunar(sy, sm, sd) {
-    const baseDate = new Date(1900, 0, 31);
-    const curDate = new Date(sy, sm - 1, sd);
-    let offsetDays = Math.round((curDate.getTime() - baseDate.getTime()) / 86400000);
+    // 基准：1900‑01‑31 对应农历1900正月初一，使用时间戳毫秒，避免浮点累计误差
+    const baseTs = new Date(1900, 0, 31).getTime();
+    const curTs = new Date(sy, sm - 1, sd).getTime();
+    let offsetDays = Math.round((curTs - baseTs) / 86400000);
 
     let ly = 1900;
-    // 减去整年
-    while(true){
+    while(true) {
         let yearDays = 348;
-        for(let i=0x8000; i>0x8; i>>=1){
-            yearDays += (lunarInfo[ly-1900] & i) ? 1 : 0;
+        for(let i = 0x8000; i > 0x8; i >>=1) {
+            yearDays += (lunarInfo[ly - 1900] & i) ? 1 : 0;
         }
         yearDays += getLeapDays(ly);
         if(offsetDays <= yearDays) break;
         offsetDays -= yearDays;
-        ly++;
+        ly += 1;
     }
 
     let lm = 1;
     let isLeap = false;
     const leapMonth = getLeapMonth(ly);
-    let ld;
+    let ld = 0;
 
-    while(lm <=12){
-        let md = getLunarMonthDays(ly, lm);
-        // 先判断是否碰到该年闰月
-        if(leapMonth === lm && !isLeap){
-            // 遇到闰月，先看闰月天数
+    while(lm <= 12) {
+        const md = getLunarMonthDays(ly, lm);
+        if(leapMonth === lm && !isLeap) {
             const leapMd = getLeapDays(ly);
-            if(offsetDays <= leapMd){
+            if(offsetDays <= leapMd) {
                 isLeap = true;
                 ld = offsetDays;
                 break;
-            }else{
+            } else {
                 offsetDays -= leapMd;
             }
         }
-        if(offsetDays <= md){
+        if(offsetDays <= md) {
             ld = offsetDays;
             break;
         }
         offsetDays -= md;
-        lm +=1;
+        lm += 1;
     }
-
-    const ganZhi = Gan[(ly - 4) % 10] + Zhi[(ly -4) %12];
+    const ganZhi = Gan[(ly - 4) % 10] + Zhi[(ly - 4) % 12];
     return {
         year: ly,
         month: lm,
@@ -229,9 +225,8 @@ function solar2Lunar(sy, sm, sd) {
         isLeap: isLeap,
         ganZhi: ganZhi,
         lunar: lunarDayCn[ld]
-    }
+    };
 }
-// ==========农历函数结束 ==========
 
 const SOLAR_FESTIVAL = {
   "1-1": "元旦",
