@@ -19,7 +19,7 @@ jobs:
         run: |
           pip install requests openpyxl
 
-      - name: 执行飞书多维表导出脚本
+      - name: python ./feishu_sync.py
         env:
           FEISHU_APP_ID: ${{ secrets.FEISHU_APP_ID }}
           FEISHU_APP_SECRET: ${{ secrets.FEISHU_APP_SECRET }}
