@@ -56,14 +56,18 @@ async function loadLunarDataJson(){
         };
       }
     }
-    lunarStatusEl.innerText = `✅农历数据已载入，共${Object.keys(hardLunarMap).length}条`;
-    lunarStatusEl.style.color="#0e9f6e";
+    if(lunarStatusEl){
+      lunarStatusEl.innerText = `✅农历数据已载入，共${Object.keys(hardLunarMap).length}条`;
+      lunarStatusEl.style.color="#0e9f6e";
+    }
     renderCalendar();
     return true;
   }catch(e){
     console.error("农历json加载失败",e);
-    lunarStatusEl.innerText = "❌农历lunar‑data.json加载失败，请确认文件位置";
-    lunarStatusEl.style.color="#d92121";
+    if(lunarStatusEl){
+      lunarStatusEl.innerText = "❌农历lunar‑data.json加载失败，请确认文件位置";
+      lunarStatusEl.style.color="#d92121";
+    }
     hardLunarMap = {};
     return false;
   }
@@ -219,13 +223,17 @@ async function loadStarExcel() {
       map[dateStr] = starVal;
     }
     starDateMap = map;
-    statusEl.innerText = `星日期已加载（${Object.keys(map).length}条）`;
-    statusEl.style.color = "#0e9f6e";
+    if(statusEl){
+      statusEl.innerText = `星日期已加载（${Object.keys(map).length}条）`;
+      statusEl.style.color = "#0e9f6e";
+    }
     return true;
   } catch (e) {
     console.error("星日期Excel加载失败：", e);
-    statusEl.innerText = "星日期加载失败（不影响其他功能）";
-    statusEl.style.color = "#d92121";
+    if(statusEl){
+      statusEl.innerText = "星日期加载失败（不影响其他功能）";
+      statusEl.style.color = "#d92121";
+    }
     return false;
   }
 }
@@ -238,7 +246,7 @@ async function loadFeishuJson(forceRefresh = false){
   const cacheInfo = document.getElementById("cacheInfo");
   try{
     if(forceRefresh){
-      loadStatus.innerText = "正在读取feishu_data.json宴席数据...";
+      if(loadStatus) loadStatus.innerText = "正在读取feishu_data.json宴席数据...";
     }
     const resp = await fetch(FESHU_JSON_URL, { cache: forceRefresh ? "no-cache" : "default" });
     if(!resp.ok) throw new Error(`文件读取失败 ${resp.status}，确认feishu_data.json和index.html放在同一目录`);
@@ -257,16 +265,18 @@ async function loadFeishuJson(forceRefresh = false){
     fullEventList = formatList;
     saveEventCache(fullEventList);
     const time = new Date().toLocaleString();
-    cacheInfo.innerText = `缓存更新:${time}`;
-    cacheInfo.style.color = "#0e9f6e";
+    if(cacheInfo){
+      cacheInfo.innerText = `缓存更新:${time}`;
+      cacheInfo.style.color = "#0e9f6e";
+    }
     renderCalendar();
-    loadStatus.innerText = `✅已同步全部宴席${fullEventList.length}条`;
+    if(loadStatus) loadStatus.innerText = `✅已同步全部宴席${fullEventList.length}条`;
   }catch(err){
     if(!forceRefresh){
-      loadStatus.innerText = "网络更新失败，继续使用本地缓存";
+      if(loadStatus) loadStatus.innerText = "网络更新失败，继续使用本地缓存";
     }else{
       alert("读取feishu_data.json失败：" + err.message);
-      loadStatus.innerText = "❌读取json失败";
+      if(loadStatus) loadStatus.innerText = "❌读取json失败";
     }
     console.error(err);
   }finally{
@@ -309,8 +319,11 @@ async function init(){
   if(cache && Array.isArray(cache.data)){
     fullEventList = cache.data;
     const timeStr = new Date(cache.updateTime).toLocaleString();
-    document.getElementById("cacheInfo").innerText = `本地缓存:${timeStr}`;
-    document.getElementById("cacheInfo").style.color = "#0e9f6e";
+    const cacheInfoEl = document.getElementById("cacheInfo");
+    if(cacheInfoEl){
+      cacheInfoEl.innerText = `本地缓存:${timeStr}`;
+      cacheInfoEl.style.color = "#0e9f6e";
+    }
   }
   renderCalendar();
   bindEvent();
