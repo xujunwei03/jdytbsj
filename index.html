@@ -230,16 +230,16 @@ function solar2Lunar(sy, sm, sd) {
     };
 }
 
-// ========== 读取静态lunar-data.json核心函数 ==========
+// ========== 读取静态lunar‑data.json核心函数 ==========
 async function loadLunarJson() {
   try {
     const res = await fetch("./lunar-data.json");
     if (!res.ok) throw new Error("文件不存在");
     lunarDataList = await res.json();
     console.log("✅农历对照表加载完成，共", lunarDataList.length, "条日期");
-  } catch (err)
+  } catch (err) {
     lunarDataList = null;
-    console.warn("lunar-data.json加载失败，自动切换内置农历算法", err);
+    console.warn("lunar‑data.json加载失败，自动切换内置农历算法", err);
   }
 }
 
@@ -256,9 +256,9 @@ function getLunarFromJson(y, m, d) {
     month: monthNum,
     day: target.lunarDay,
     isLeap: target.isLeapMonth,
-    lunarMonthStr: (target.isLeapMonth ? "闰" : "") + target.lunarMonth,
+    lunarMonthStr: (target.isLeapMonth ? "闰" : "") + target.lunarMonth + "月",
     lunarDayStr: target.lunarDay,
-    lunarShort: (target.isLeapMonth ? "闰" : "") + target.lunarMonth + target.lunarDay
+    lunarShort: (target.isLeapMonth ? "闰" : "") + target.lunarMonth + "月" + target.lunarDay
   };
 }
 
@@ -345,18 +345,23 @@ const SOLAR_TERM = {
 
 // ========== 本地缓存工具 ==========
 function saveEventCache(list){
-  localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify({
-    updateTime: Date.now(),
-    data: list
-  }));
+  try{
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify({
+      updateTime: Date.now(),
+      data: list
+    }));
+  }catch(e){
+    console.warn("浏览器阻止localStorage写入",e);
+  }
 }
 
 function readEventCache(){
-  const str = localStorage.getItem(LOCAL_STORAGE_KEY);
-  if(!str) return null;
   try{
+    const str = localStorage.getItem(LOCAL_STORAGE_KEY);
+    if(!str) return null;
     return JSON.parse(str);
   }catch(e){
+    console.warn("浏览器阻止localStorage读取",e);
     return null;
   }
 }
@@ -640,7 +645,7 @@ function bindEvent(){
   $("#next").onclick = () => {
     if(loading) return;
     currentMonth++;
-    if(currentMonth > 12){ currentMonth = 1; currentYear--; }
+    if(currentMonth > 12){ currentMonth = 1; currentYear++; }
     selectItem = null;
     infoCard.style.display = "none";
     renderCalendar();
