@@ -1,0 +1,38 @@
+name: 同步飞书宴席数据
+on:
+  workflow_dispatch: # 允许API调用触发，网页按钮调用这个
+jobs:
+  sync_job:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出仓库代码
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GH_PAT }}
+
+      - name: 配置python环境
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 安装依赖
+        run: |
+          pip install requests openpyxl
+
+      - name: 执行飞书多维表导出脚本
+        env:
+          FEISHU_APP_ID: ${{ secrets.FEISHU_APP_ID }}
+          FEISHU_APP_SECRET: ${{ secrets.FEISHU_APP_SECRET }}
+          FEISHU_BITABLE_TOKEN: ${{ secrets.FEISHU_BITABLE_TOKEN }}
+          FEISHU_TABLE_ID: ${{ secrets.FEISHU_TABLE_ID }}
+        run: |
+          python ./feishu_data.json
+          # ⚠️把export_feishu.py替换成你实际导出脚本文件名！脚本输出 feishu_data.json star.xlsx到根目录
+
+      - name: 提交更新数据回仓库
+        run: |
+          git config --global user.name "${{ secrets.GH_USERNAME }}"
+          git config --global user.email "xujunwei03@users.noreply.github.com"
+          git add feishu_data.json star.xlsx
+          git commit -m "🤖自动同步飞书宴席数据 $(date '+%Y‑%m‑%d %H:%M')"
+          git push origin main
