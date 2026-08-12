@@ -1,6 +1,8 @@
 name: 同步飞书宴席数据
 on:
-  workflow_dispatch: # 允许手动触发，网页按钮调用这个
+  workflow_dispatch: # 保留手动按钮触发
+  schedule:
+    - cron: '0 * * * *' # 每小时执行一次（UTC每小时整点）
 
 jobs:
   sync_job:
