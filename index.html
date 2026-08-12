@@ -134,10 +134,10 @@ const CACHE_TTL = 5 * 60 * 1000;
 let starDateMap = {};
 let fullEventList = [];
 let loading = false;
-// 新增：农历json全局存储
+// 农历静态对照表全局数组
 let lunarDataList = null;
 
-// 农历库原始数据（兜底备用）
+// 兜底农历算法原始数据
 const lunarInfo = [
     0x04bd8,0x04ae0,0x0a570,0x054d5,0x0d260,0x0d950,0x16554,0x056a0,0x09ad0,0x055d2,
     0x04ae0,0x0a5b6,0x0a4d0,0x0d250,0x1d255,0x0b540,0x0d6a0,0x0ada2,0x095b0,0x14977,
@@ -180,7 +180,7 @@ function getLeapDays(y) {
     return (lunarInfo[y-1900] & (0x10000 >> lm)) ? 30 :29;
 }
 
-// 原始算法（兜底使用）
+// 兜底公历转农历算法
 function solar2Lunar(sy, sm, sd) {
     const baseDate = new Date(1900, 0, 1);
     const objDate = new Date(sy, sm - 1, sd);
@@ -230,23 +230,23 @@ function solar2Lunar(sy, sm, sd) {
     };
 }
 
-// ========== 新增：读取lunar-data.json 工具 ==========
+// ========== 读取静态lunar-data.json核心函数 ==========
 async function loadLunarJson() {
   try {
     const res = await fetch("./lunar-data.json");
     if (!res.ok) throw new Error("文件不存在");
     lunarDataList = await res.json();
-    console.log("✅农历对照表加载完成");
-  } catch (err) {
+    console.log("✅农历对照表加载完成，共", lunarDataList.length, "条日期");
+  } catch (err)
     lunarDataList = null;
-    console.warn("lunar-data.json加载失败，将使用内置农历算法", err);
+    console.warn("lunar-data.json加载失败，自动切换内置农历算法", err);
   }
 }
 
-// 根据年月日从json获取农历，无数据返回null
+/** 通过年月日从静态表读取农历，匹配不到返回null */
 function getLunarFromJson(y, m, d) {
   if (!lunarDataList) return null;
-  const dateStr = `${y}-${String(m).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+  const dateStr = `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
   const target = lunarDataList.find(item => item.solar === dateStr);
   if (!target) return null;
   const monthMap = {"正":0,"一":1,"二":2,"三":3,"四":4,"五":5,"六":6,"七":7,"八":8,"九":9,"十":10,"冬":11,"腊":12};
@@ -487,12 +487,12 @@ const infoCard = $("#infoCard");
 const infoText = $("#infoText");
 
 async function init(){
+  // 最优先加载农历静态表，保证渲染时已有数据
+  await loadLunarJson();
+
   const now = new Date();
   currentYear = now.getFullYear();
   currentMonth = now.getMonth() + 1;
-
-  // 优先加载农历对照表
-  await loadLunarJson();
 
   const cache = readEventCache();
   if(cache && Array.isArray(cache.data)){
@@ -538,7 +538,7 @@ function renderCalendar(){
 
   for(let d = 1; d <= totalDay; d++){
     const div = document.createElement("div");
-    // 优先读取json农历，无数据使用内置算法
+    // 核心：优先读取静态json农历，无匹配才用算法
     let lunar = getLunarFromJson(currentYear, currentMonth, d);
     if (!lunar) lunar = solar2Lunar(currentYear, currentMonth, d);
 
@@ -640,7 +640,7 @@ function bindEvent(){
   $("#next").onclick = () => {
     if(loading) return;
     currentMonth++;
-    if(currentMonth > 12){ currentMonth = 1; currentYear++; }
+    if(currentMonth > 12){ currentMonth = 1; currentYear--; }
     selectItem = null;
     infoCard.style.display = "none";
     renderCalendar();
@@ -664,6 +664,7 @@ function bindEvent(){
     const resEl = $("#queryResult");
     try{
       if(type == "s2l"){
+        // 查询框同样优先读取静态农历文件
         let lunar = getLunarFromJson(qy, qm, qd);
         if (!lunar) lunar = solar2Lunar(qy, qm, qd);
         resEl.innerText = `公历 ${qy}-${qm}-${qd} → 农历 ${lunar.lunarShort}`;
