@@ -135,6 +135,7 @@ let starDateMap = {};
 let fullEventList = [];
 let loading = false;
 
+// 农历库数据
 const lunarInfo = [
     0x04bd8,0x04ae0,0x0a570,0x054d5,0x0d260,0x0d950,0x16554,0x056a0,0x09ad0,0x055d2,
     0x04ae0,0x0a5b6,0x0a4d0,0x0d250,0x1d255,0x0b540,0x0d6a0,0x0ada2,0x095b0,0x14977,
@@ -153,8 +154,6 @@ const lunarInfo = [
     0x0d520,0x0dd45,0x0b5a0,0x056d0,0x055b2,0x049b0,0x0a577,0x0a4b0,0x0aa50,0x1b255,
     0x06d20,0x0ada0
 ];
-const Gan = ["甲","乙","丙","丁","戊","己","庚","辛","壬","癸"];
-const Zhi = ["子","丑","寅","卯","辰","巳","午","未","申","酉","戌","亥"];
 const lunarMonthCn = ["正","二","三","四","五","六","七","八","九","十","冬","腊"];
 const lunarDayCn = [
     "","初一","初二","初三","初四","初五","初六","初七","初八","初九","初十",
@@ -162,7 +161,7 @@ const lunarDayCn = [
     "廿一","廿二","廿三","廿四","廿五","廿六","廿七","廿八","廿九","三十"
 ];
 
-//===== 修复后的原版标准solar2Lunar，修复日期偏移，2026‑08‑12得到：六月三十 丙午年 =====
+// 修正公历转农历算法
 function getLeapMonth(y) {
     return lunarInfo[y - 1900] & 0xf;
 }
@@ -181,7 +180,7 @@ function getLeapDays(y) {
 }
 
 function solar2Lunar(sy, sm, sd) {
-    const baseDate = new Date(1900, 0, 31); //1900‑01‑31 正月初一
+    const baseDate = new Date(1900, 0, 31);
     const objDate = new Date(sy, sm - 1, sd);
     let offset = Math.floor((objDate.getTime() - baseDate.getTime()) / 86400000);
 
@@ -218,14 +217,14 @@ function solar2Lunar(sy, sm, sd) {
         lm +=1;
     }
     const ld = offset;
-    const ganZhi = Gan[(ly - 4) % 10] + Zhi[(ly - 4) % 12];
     return {
         year: ly,
         month: lm,
         day: ld,
         isLeap: isLeap,
-        ganZhi: ganZhi,
-        lunar: lunarDayCn[ld]
+        lunarMonthStr: (isLeap?"闰":"") + lunarMonthCn[lm-1] + "月",
+        lunarDayStr: lunarDayCn[ld],
+        lunarShort: (isLeap?"闰":"")+lunarMonthCn[lm-1]+"月"+lunarDayCn[ld]
     };
 }
 
@@ -530,7 +529,7 @@ function renderCalendar(){
     div.innerHTML = `
       ${badgeHtml}
       <div class="solar">${d}</div>
-      <div class="lunar">${lunar.lunar}</div>
+      <div class="lunar">${lunar.lunarShort}</div>
       ${festivalText ? `<div class="festival">${festivalText}</div>` : ""}
       ${lunarFestivalText ? `<div class="lunar-festival">${lunarFestivalText}</div>` : ""}
       ${termText ? `<div class="solar-term">${termText}</div>` : ""}
@@ -581,7 +580,7 @@ function clickDay(el, evList){
 
   infoText.innerHTML = `
     <div>公历：${y}-${m}-${d} 星期${weekArr[w]}</div>
-    <div>农历：${lunar.ganZhi}年${lunar.isLeap ? "闰" : ""}${lunarMonthCn[lunar.month-1]}月${lunar.lunar}</div>
+    <div>农历：${lunar.lunarShort}</div>
     <div>星日期：${starText}</div>
     <div style="margin:8px 0 4px 0;font-weight:bold">宴席详情（共${evList.length}场）</div>
     ${detailHtml}
@@ -627,7 +626,7 @@ function bindEvent(){
     try{
       if(type == "s2l"){
         const lunar = solar2Lunar(qy, qm, qd);
-        resEl.innerText = `公历 ${qy}-${qm}-${qd} → 农历 ${lunar.ganZhi}年${lunar.isLeap ? "闰" : ""}${lunarMonthCn[lunar.month-1]}月${lunar.lunar}`;
+        resEl.innerText = `公历 ${qy}-${qm}-${qd} → 农历 ${lunar.lunarShort}`;
       }else{
         resEl.innerText = "农历转公历暂只支持日历内点击查看";
       }
