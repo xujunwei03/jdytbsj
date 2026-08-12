@@ -161,7 +161,6 @@ const lunarDayCn = [
     "廿一","廿二","廿三","廿四","廿五","廿六","廿七","廿八","廿九","三十"
 ];
 
-// 修正公历转农历算法
 function getLeapMonth(y) {
     return lunarInfo[y - 1900] & 0xf;
 }
@@ -179,8 +178,10 @@ function getLeapDays(y) {
     return (lunarInfo[y-1900] & (0x10000 >> lm)) ? 30 :29;
 }
 
+// ==========【修复】正确公历转农历，基准日期修正为1900‑01‑01(农历1900正月初一) ==========
 function solar2Lunar(sy, sm, sd) {
-    const baseDate = new Date(1900, 0, 31);
+    // 基准：公历1900‑01‑01 = 农历1900年正月初一
+    const baseDate = new Date(1900, 0, 1);
     const objDate = new Date(sy, sm - 1, sd);
     let offset = Math.floor((objDate.getTime() - baseDate.getTime()) / 86400000);
 
