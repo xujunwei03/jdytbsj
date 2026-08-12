@@ -4,7 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>宴席农历日历</title>
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <!-- 替换cdn，解决storage blocked警告；修复favicon404 -->
+  <link rel="icon" href="data:,">
+  <script src="https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <style>
     :root{
       --bg:#f7f8fa;
@@ -135,7 +137,7 @@ let starDateMap = {};
 let fullEventList = [];
 let loading = false;
 
-// 兜底农历算法原始数据
+// ==========【修复后的农历算法，基准：1900‑01‑31正月初一】==========
 const lunarInfo = [
     0x04bd8,0x04ae0,0x0a570,0x054d5,0x0d260,0x0d950,0x16554,0x056a0,0x09ad0,0x055d2,
     0x04ae0,0x0a5b6,0x0a4d0,0x0d250,0x1d255,0x0b540,0x0d6a0,0x0ada2,0x095b0,0x14977,
@@ -178,9 +180,9 @@ function getLeapDays(y) {
     return (lunarInfo[y-1900] & (0x10000 >> lm)) ? 30 :29;
 }
 
-// 公历转农历算法
+// ======修复核心：基准日期改为 1900‑01‑31（农历1900正月初一）======
 function solar2Lunar(sy, sm, sd) {
-    const baseDate = new Date(1900, 0, 1);
+    const baseDate = new Date(1900, 0, 31); // 修复点！原来写的是1900‑01‑01
     const objDate = new Date(sy, sm - 1, sd);
     let offset = Math.floor((objDate.getTime() - baseDate.getTime()) / 86400000);
 
@@ -506,7 +508,6 @@ function renderCalendar(){
 
   for(let d = 1; d <= totalDay; d++){
     const div = document.createElement("div");
-    // 直接使用内置农历算法，不再读取lunar‑data.json
     let lunar = solar2Lunar(currentYear, currentMonth, d);
 
     const isToday = (ty === currentYear && tm === currentMonth && td === d);
@@ -631,7 +632,6 @@ function bindEvent(){
     const resEl = $("#queryResult");
     try{
       if(type == "s2l"){
-        // 查询直接调用内置算法
         let lunar = solar2Lunar(qy, qm, qd);
         resEl.innerText = `公历 ${qy}-${qm}-${qd} → 农历 ${lunar.lunarShort}`;
       }else{
