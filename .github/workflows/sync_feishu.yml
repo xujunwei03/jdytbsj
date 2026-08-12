@@ -2,7 +2,8 @@ name: 同步飞书宴席数据
 on:
   workflow_dispatch: # 保留手动按钮触发
   schedule:
-    - cron: '0 * * * *' # 每小时执行一次（UTC每小时整点）
+  - cron: '0 * * * *'
+    timezone: "Asia/Shanghai" # 北京时间每小时整点
 
 jobs:
   sync_job:
