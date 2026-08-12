@@ -2,8 +2,10 @@ name: 同步飞书宴席数据
 on:
   workflow_dispatch: # 保留手动按钮触发
   schedule:
-  - cron: '0 * * * *'
-    timezone: "Asia/Shanghai" # 北京时间每小时整点
+  # 北京时间每小时整点 = UTC时间往前减8小时；cron写UTC时间
+  # 北京时间 0点 → UTC16点；北京时间23点 → UTC15点
+  # cron语法： 分 时 日 月 周
+  - cron: '20 */1 * * *'
 
 jobs:
   sync_job:
