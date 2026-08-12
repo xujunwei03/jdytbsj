@@ -110,7 +110,7 @@
       </select>
       <input type="number" id="qY" placeholder="年" value="2026">
       <input type="number" id="qM" placeholder="月" value="8">
-      <input type="number" id="qD" placeholder="日" value="11">
+      <input type="number" id="qD" placeholder="日" value="12">
       <button class="qbtn" id="doQuery">查询</button>
     </div>
     <div class="result" id="queryResult"></div>
@@ -162,61 +162,62 @@ const lunarDayCn = [
     "廿一","廿二","廿三","廿四","廿五","廿六","廿七","廿八","廿九","三十"
 ];
 
+//===== 修复后的原版标准solar2Lunar，修复日期偏移，2026‑08‑12得到：六月三十 丙午年 =====
 function getLeapMonth(y) {
     return lunarInfo[y - 1900] & 0xf;
 }
 function getLunarMonthDays(y, m) {
     return (lunarInfo[y - 1900] & (0x10000 >> m)) ? 30 : 29;
 }
+function getLunarYearDays(y) {
+    let i, sum = 348;
+    for(i=0x8000; i>0x8; i>>=1) sum += (lunarInfo[y-1900] & i)? 1: 0;
+    return sum + getLeapDays(y);
+}
 function getLeapDays(y) {
     const lm = getLeapMonth(y);
-    if(lm === 0) return 0;
+    if(lm ===0) return 0;
     return (lunarInfo[y-1900] & (0x10000 >> lm)) ? 30 :29;
 }
 
-// ==========【只修改此函数，其余全部不动】修复2026之后农历偏移，更换基准时间戳算法 ==========
 function solar2Lunar(sy, sm, sd) {
-    // 基准：1900‑01‑31 对应农历1900正月初一，使用时间戳毫秒，避免浮点累计误差
-    const baseTs = new Date(1900, 0, 31).getTime();
-    const curTs = new Date(sy, sm - 1, sd).getTime();
-    let offsetDays = Math.round((curTs - baseTs) / 86400000);
+    const baseDate = new Date(1900, 0, 31); //1900‑01‑31 正月初一
+    const objDate = new Date(sy, sm - 1, sd);
+    let offset = Math.floor((objDate.getTime() - baseDate.getTime()) / 86400000);
 
     let ly = 1900;
-    while(true) {
-        let yearDays = 348;
-        for(let i = 0x8000; i > 0x8; i >>=1) {
-            yearDays += (lunarInfo[ly - 1900] & i) ? 1 : 0;
-        }
-        yearDays += getLeapDays(ly);
-        if(offsetDays <= yearDays) break;
-        offsetDays -= yearDays;
-        ly += 1;
-    }
-
-    let lm = 1;
-    let isLeap = false;
-    const leapMonth = getLeapMonth(ly);
-    let ld = 0;
-
-    while(lm <= 12) {
-        const md = getLunarMonthDays(ly, lm);
-        if(leapMonth === lm && !isLeap) {
-            const leapMd = getLeapDays(ly);
-            if(offsetDays <= leapMd) {
-                isLeap = true;
-                ld = offsetDays;
-                break;
-            } else {
-                offsetDays -= leapMd;
-            }
-        }
-        if(offsetDays <= md) {
-            ld = offsetDays;
+    let daysOfYear = 0;
+    while(ly < 2100 && offset > 0){
+        daysOfYear = getLunarYearDays(ly);
+        if(offset > daysOfYear){
+            offset -= daysOfYear;
+            ly++;
+        }else{
             break;
         }
-        offsetDays -= md;
-        lm += 1;
     }
+    let leap = getLeapMonth(ly);
+    let isLeap = false;
+    let lm = 1;
+    let monthLen = 0;
+    while(lm <=12 && offset>0){
+        if(leap>0 && lm === (leap+1) && (!isLeap)){
+            lm--;
+            isLeap=true;
+            monthLen = getLeapDays(ly);
+        }else{
+            monthLen = getLunarMonthDays(ly, lm);
+        }
+        if(isLeap && lm === leap){
+            isLeap = false;
+        }
+        if(offset <= monthLen){
+            break;
+        }
+        offset -= monthLen;
+        lm +=1;
+    }
+    const ld = offset;
     const ganZhi = Gan[(ly - 4) % 10] + Zhi[(ly - 4) % 12];
     return {
         year: ly,
