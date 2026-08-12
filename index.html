@@ -92,6 +92,7 @@
     <span class="star-status" id="starStatus">星日期加载中...</span>
     <span class="star-status" id="loadStatus"></span>
     <span class="star-status" id="cacheInfo"></span>
+    <span class="star-status" id="lunarLoadStatus">农历数据加载中</span>
   </div>
   <div class="header">
     <button class="btn" id="prev">◀</button>
@@ -118,14 +119,16 @@ const STAR_EXCEL_CONFIG = {
   skipHeader: true
 };
 const FESHU_JSON_URL = "./feishu_data.json";
+const LUNAR_DATA_JSON_URL = "./lunar-data.json";
 const LOCAL_STORAGE_KEY = "feishu_banquet_cache";
 const CACHE_TTL = 5 * 60 * 1000;
 
 let starDateMap = {};
 let fullEventList = [];
+let hardLunarMap = null; // 外部json完整农历表
 let loading = false;
 
-// ======================【完全重写修复版农历转换库】======================
+// ======================【农历中文格式化，不再做算法转换，只做展示】======================
 const lunarMonthCn = ["正","二","三","四","五","六","七","八","九","十","冬","腊"];
 const lunarDayCn = [
     "","初一","初二","初三","初四","初五","初六","初七","初八","初九","初十",
@@ -133,97 +136,36 @@ const lunarDayCn = [
     "廿一","廿二","廿三","廿四","廿五","廿六","廿七","廿八","廿九","三十"
 ];
 
-// 1900‑2100 农历数据
-const lunarInfo = [
-0x04bd8,0x04ae0,0x0a570,0x054d5,0x0d260,0x0d950,0x16554,0x056a0,0x09ad0,0x055d2,
-0x04ae0,0x0a5b6,0x0a4d0,0x0d250,0x1d255,0x0b540,0x0d6a0,0x0ada2,0x095b0,0x14977,
-0x04970,0x0a4b0,0x0b4b5,0x06a50,0x06d40,0x1ab54,0x02b60,0x09570,0x052f2,0x04970,
-0x06566,0x0d4a0,0x0ea50,0x06e95,0x05ad0,0x02b60,0x186e3,0x092e0,0x1c8d7,0x0c950,
-0x0d4a0,0x1d8a6,0x0b550,0x056a0,0x1a5b4,0x025d0,0x092d0,0x0d2b2,0x0a950,0x0b557,
-0x06ca0,0x0b550,0x15355,0x04da0,0x0a5d0,0x14573,0x052d0,0x0a9a8,0x0e950,0x06aa0,
-0x0aea6,0x0ab50,0x04b60,0x0aae4,0x0a570,0x05260,0x0b273,0x0d260,0x0d950,0x16a8b,
-0x05b50,0x056a0,0x096d0,0x04dd5,0x04ad0,0x0a4d0,0x0d4d4,0x0d250,0x0d558,0x0b540,
-0x0b5a0,0x195a6,0x095b0,0x049b0,0x0a974,0x0a4b0,0x0b27a,0x06a50,0x06d40,0x0af46,
-0x0ab60,0x09570,0x04af5,0x04970,0x064b0,0x074a3,0x0ea50,0x06b58,0x055c0,0x0ab60,
-0x096d5,0x092e0,0x0c960,0x0d954,0x0d4a0,0x0da50,0x07552,0x056a0,0x0abb7,0x025d0,
-0x092d0,0x0cab5,0x0a950,0x0b4a0,0x0baa4,0x0ad50,0x055d9,0x04ba0,0x0a5b0,0x15176,
-0x052b0,0x0a930,0x07954,0x06aa0,0x0ad50,0x05b52,0x04b60,0x0a6e6,0x0a4e0,0x0d260,
-0x0ea65,0x0d530,0x05aa0,0x076a3,0x096d0,0x04bd7,0x04ad0,0x0a4d0,0x1d0b6,0x0d250,
-0x0d520,0x0dd45,0x0b5a0,0x056d0,0x055b2,0x049b0,0x0a577,0x0a4b0,0x0aa50,0x1b255,
-0x06d20,0x0ada0
-];
-
-function getLeapMonth(y) { return lunarInfo[y - 1900] & 0xf; }
-function getLunarMonthDays(y, m) { return (lunarInfo[y - 1900] & (0x10000 >> m)) ? 30 : 29; }
-function getLeapMonthDays(y){
-    const lm = getLeapMonth(y);
-    if(lm === 0) return 0;
-    return (lunarInfo[y-1900] & (0x10000 >> lm)) ? 30 : 29;
+/**
+ * 从hardLunarMap原始对象格式化为展示字符串
+ * @param {Object} item {lunarY,lunarM,lunarD,isLeap}
+ */
+function formatLunarDisplay(item){
+  if(!item) return "--";
+  const leapTxt = item.isLeap ? "闰" : "";
+  const mStr = lunarMonthCn[item.lunarM - 1];
+  const dStr = lunarDayCn[item.lunarD];
+  return `${leapTxt}${mStr}月${dStr}`;
 }
 
-/**
- * 公历转农历【修复版本】
- * 基准：1900‑01‑31 = 农历1900正月初一
- * 修复闰月遍历逻辑，2026‑08‑12 → 丙午年 六月三十
- */
-function solar2Lunar(sy, sm, sd) {
-    const baseDate = new Date(1900, 0, 31);
-    const target = new Date(sy, sm - 1, sd);
-    let daysOffset = Math.round((target.getTime() - baseDate.getTime()) / 86400000);
-
-    let lunarYear = 1900;
-    // 1. 减掉整年农历天数
-    while(lunarYear <= 2100){
-        let yearDays = 0;
-        const leapM = getLeapMonth(lunarYear);
-        // 12个普通月
-        for(let m=1;m<=12;m++){
-            yearDays += getLunarMonthDays(lunarYear, m);
-        }
-        // 加上闰月
-        if(leapM !== 0){
-            yearDays += getLeapMonthDays(lunarYear);
-        }
-        if(daysOffset > yearDays){
-            daysOffset -= yearDays;
-            lunarYear += 1;
-        }else{
-            break;
-        }
-    }
-
-    const leapMonth = getLeapMonth(lunarYear);
-    let lunarMonth = 1;
-    let isLeap = false;
-    // 2. 按月扣减
-    while(lunarMonth <=12 && daysOffset>0){
-        let md = getLunarMonthDays(lunarYear, lunarMonth);
-        // 遇到闰月
-        if(!isLeap && leapMonth !==0 && lunarMonth === leapMonth){
-            const leapD = getLeapMonthDays(lunarYear);
-            if(daysOffset <= leapD){
-                isLeap = true;
-                break;
-            }
-            daysOffset -= leapD;
-        }
-        if(daysOffset <= md){
-            break;
-        }
-        daysOffset -= md;
-        lunarMonth += 1;
-    }
-    const lunarDay = daysOffset;
-
-    return {
-        year: lunarYear,
-        month: lunarMonth,
-        day: lunarDay,
-        isLeap: isLeap,
-        lunarMonthStr: (isLeap?"闰":"") + lunarMonthCn[lunarMonth-1] + "月",
-        lunarDayStr: lunarDayCn[lunarDay],
-        lunarShort: (isLeap?"闰":"")+lunarMonthCn[lunarMonth-1]+"月"+lunarDayCn[lunarDay]
-    };
+// ========== 加载外部lunar‑data.json完整农历映射表 ==========
+async function loadLunarDataJson(){
+  const lunarStatusEl = document.getElementById("lunarLoadStatus");
+  try{
+    const resp = await fetch(LUNAR_DATA_JSON_URL);
+    if(!resp.ok) throw new Error("读取lunar‑data.json失败");
+    hardLunarMap = await resp.json();
+    lunarStatusEl.innerText = `✅农历数据已载入，共${Object.keys(hardLunarMap).length}条`;
+    lunarStatusEl.style.color="#0e9f6e";
+    renderCalendar();
+    return true;
+  }catch(e){
+    console.error("农历json加载失败",e);
+    lunarStatusEl.innerText = "❌农历lunar‑data.json加载失败，请确认文件位置";
+    lunarStatusEl.style.color="#d92121";
+    hardLunarMap = {};
+    return false;
+  }
 }
 
 // ========== 节日配置 ==========
@@ -438,7 +380,8 @@ function getSolarFestival(y,m,d){
 }
 
 function getLunarFestival(lunarObj){
-  const k = `${lunarObj.month}-${lunarObj.day}`;
+  if(!lunarObj) return "";
+  const k = `${lunarObj.lunarM}-${lunarObj.lunarD}`;
   return LUNAR_FESTIVAL[k] || "";
 }
 
@@ -471,11 +414,13 @@ async function init(){
   renderCalendar();
   bindEvent();
 
+  // 并行加载3个资源
+  const pLunar = loadLunarDataJson();
   const pExcel = loadStarExcel();
   if(cache === null || isCacheExpired(cache)){
     loadFeishuJson(false);
   }
-  await pExcel;
+  await Promise.all([pLunar,pExcel]);
   renderCalendar();
 }
 
@@ -505,11 +450,13 @@ function renderCalendar(){
 
   for(let d = 1; d <= totalDay; d++){
     const div = document.createElement("div");
-    let lunar = solar2Lunar(currentYear, currentMonth, d);
+    const dateStr = `${currentYear}-${String(currentMonth).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+    // 直接读取外部json农历，不再运行算法
+    const lunarRaw = hardLunarMap ? hardLunarMap[dateStr] : null;
+    const lunarShowText = formatLunarDisplay(lunarRaw);
 
     const isToday = (ty === currentYear && tm === currentMonth && td === d);
     const isSelect = selectItem && selectItem.y === currentYear && selectItem.m === currentMonth && selectItem.d === d;
-    const dateStr = `${currentYear}-${String(currentMonth).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
     const dayEvList = groupMap[dateStr] || [];
     const dayCount = dayEvList.length;
     const starType = starDateMap[dateStr] || "";
@@ -524,7 +471,7 @@ function renderCalendar(){
     if(starType === "星宜日") div.classList.add("star-yi");
 
     const festivalText = getSolarFestival(currentYear, currentMonth, d);
-    const lunarFestivalText = getLunarFestival(lunar);
+    const lunarFestivalText = getLunarFestival(lunarRaw);
     const termText = getSolarTerm(currentYear, currentMonth, d);
 
     const badgeHtml = dayCount > 0 ? `<div class="ev-badge">${dayCount}</div>` : "";
@@ -533,7 +480,7 @@ function renderCalendar(){
     div.innerHTML = `
       ${badgeHtml}
       <div class="solar">${d}</div>
-      <div class="lunar">${lunar.lunarShort}</div>
+      <div class="lunar">${lunarShowText}</div>
       ${festivalText ? `<div class="festival">${festivalText}</div>` : ""}
       ${lunarFestivalText ? `<div class="lunar-festival">${lunarFestivalText}</div>` : ""}
       ${termText ? `<div class="solar-term">${termText}</div>` : ""}
@@ -543,7 +490,7 @@ function renderCalendar(){
     div.dataset.y = currentYear;
     div.dataset.m = currentMonth;
     div.dataset.d = d;
-    div.dataset.lunar = JSON.stringify(lunar);
+    div.dataset.lunar = JSON.stringify(lunarRaw||{});
     div.dataset.star = starType;
     div.dataset.dateStr = dateStr;
     div.onclick = () => clickDay(div, dayEvList);
@@ -584,7 +531,7 @@ function clickDay(el, evList){
 
   infoText.innerHTML = `
     <div>公历：${y}-${m}-${d} 星期${weekArr[w]}</div>
-    <div>农历：${lunar.lunarShort}</div>
+    <div>农历：${formatLunarDisplay(lunar)}</div>
     <div>星日期：${starText}</div>
     <div style="margin:8px 0 4px 0;font-weight:bold">宴席详情（共${evList.length}场）</div>
     ${detailHtml}
