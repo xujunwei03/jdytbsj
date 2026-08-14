@@ -2,6 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
 <title>宴席农历日历</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;font-family:system-ui, sans-serif;}
@@ -31,12 +32,12 @@ html[data-theme="dark"]{
   --star-hao:#204030;
   --star-yi:#403820;
 }
-body{background:var(--bg);color:var(--text);padding:16px;max-width:1200px;margin:0 auto;}
-#ym{font-size:24px;font-weight:bold;text-align:center;margin-bottom:12px;}
-.ctrl-bar{display:flex;gap:8px;justify-content:center;margin-bottom:12px;}
-button{padding:6px 14px;border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:4px;cursor:pointer;}
-#calendar{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;}
-.day-item{position:relative;border:1px solid var(--border);min-height:90px;padding:4px;border-radius:4px;background:var(--card);}
+body{background:var(--bg);color:var(--text);padding:8px;max-width:1200px;margin:0 auto;}
+#ym{font-size:22px;font-weight:bold;text-align:center;margin-bottom:8px;}
+.ctrl-bar{display:flex;gap:6px;justify-content:center;margin-bottom:8px;flex-wrap:wrap;}
+button{padding:5px 10px;border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:4px;cursor:pointer;font-size:14px;}
+#calendar{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;}
+.day-item{position:relative;border:1px solid var(--border);min-height:82px;padding:3px;border-radius:4px;background:var(--card);overflow:hidden;}
 .day-item.empty{background:transparent;border:none;}
 .day-item.today{background:var(--today-bg);}
 .day-item.active{background:var(--active-bg);}
@@ -45,15 +46,29 @@ button{padding:6px 14px;border:1px solid var(--border);background:var(--card);co
 .day-item.star-ji{background:var(--star-ji);}
 .day-item.star-hao{background:var(--star-hao);}
 .day-item.star-yi{background:var(--star-yi);}
-.solar{font-size:16px;font-weight:bold;position:relative;}
-.today-mark{color:#ff3333;margin-left:4px;}
-.lunar{font-size:12px;opacity:0.85;}
-.festival,.lunar-festival,.solar-term{font-size:11px;color:#d03030;}
-.star-tag{font-size:11px;color:#0066aa;font-weight:bold;}
-.ev-badge{position:absolute;top:2px;right:2px;background:#d92121;color:#fff;border-radius:99px;font-size:11px;padding:0 4px;min-width:16px;text-align:center;}
-#infoCard{margin-top:16px;padding:12px;border:1px solid var(--border);border-radius:6px;background:var(--card);display:none;}
-.detail-item{border-top:1px solid var(--border);padding:8px 0;font-size:14px;line-height:1.6;}
-.status-line{margin:6px 0;font-size:13px;}
+.solar{font-size:16px;font-weight:bold;position:relative;line-height:1.1;}
+.today-mark{color:#ff3333;margin-left:2px;font-size:14px;}
+.lunar{font-size:12px;opacity:0.85;line-height:1.1;}
+.festival,.lunar-festival,.solar-term{font-size:11px;color:#d03030;line-height:1.1;}
+.star-tag{font-size:11px;color:#0066aa;font-weight:bold;line-height:1.1;}
+.ev-badge{position:absolute;top:1px;right:1px;background:#d92121;color:#fff;border-radius:99px;font-size:10px;padding:0 3px;min-width:14px;text-align:center;line-height:1.2;}
+#infoCard{margin-top:12px;padding:10px;border:1px solid var(--border);border-radius:6px;background:var(--card);display:none;}
+.detail-item{border-top:1px solid var(--border);padding:6px 0;font-size:13px;line-height:1.5;}
+.status-line{margin:4px 0;font-size:12px;line-height:1.3;}
+
+/*手机小屏幕进一步压缩*/
+@media (max-width:480px){
+  body{padding:4px;}
+  #ym{font-size:18px;margin-bottom:6px;}
+  .ctrl-bar button{padding:4px 7px;font-size:13px;}
+  #calendar{gap:2px;}
+  .day-item{min-height:66px;padding:2px;}
+  .solar{font-size:14px;}
+  .lunar{font-size:10px;}
+  .festival,.lunar-festival,.solar-term,.star-tag{font-size:9px;}
+  .ev-badge{font-size:9px;min-width:12px;}
+  .status-line{font-size:11px;}
+}
 </style>
 </head>
 <body>
