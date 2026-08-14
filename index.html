@@ -45,7 +45,8 @@ button{padding:6px 14px;border:1px solid var(--border);background:var(--card);co
 .day-item.star-ji{background:var(--star-ji);}
 .day-item.star-hao{background:var(--star-hao);}
 .day-item.star-yi{background:var(--star-yi);}
-.solar{font-size:16px;font-weight:bold;}
+.solar{font-size:16px;font-weight:bold;position:relative;}
+.today-mark{color:#ff3333;margin-left:4px;}
 .lunar{font-size:12px;opacity:0.85;}
 .festival,.lunar-festival,.solar-term{font-size:11px;color:#d03030;}
 .star-tag{font-size:11px;color:#0066aa;font-weight:bold;}
@@ -135,16 +136,18 @@ const SOLAR_FESTIVAL = {
   "10-1": "国庆节"
 };
 
-const LUNAR_FESTIVAL = {
-  "1-1": "春节",
-  "1-15": "元宵节",
-  "5-5": "端午节",
-  "7-7": "七夕",
-  "8-15": "中秋节",
-  "9-9": "重阳节",
-  "12-8": "腊八",
-  "12-30": "除夕"
-};
+// 农历节日关键词映射，匹配star.xlsx输出的农历文本
+const LUNAR_FESTIVAL_MAP = [
+  {key:"正月初一",name:"春节"},
+  {key:"正月十五",name:"元宵节"},
+  {key:"五月初五",name:"端午节"},
+  {key:"七月初七",name:"七夕"},
+  {key:"八月十五",name:"中秋节"},
+  {key:"九月初九",name:"重阳节"},
+  {key:"腊月初八",name:"腊八"},
+  {key:"腊月三十",name:"除夕"},
+  {key:"腊月廿九",name:"除夕"}
+];
 
 const SOLAR_TERM = {
   "2024-09-07": "白露",
@@ -356,9 +359,10 @@ function getSolarFestival(y,m,d){
   return SOLAR_FESTIVAL[k] || "";
 }
 
-function getLunarFestival(lunarRaw){
-  // 若需要根据star.xlsx农历文本匹配农历节日，可在此解析
-  return "";
+function getLunarFestival(lunarText){
+  if(!lunarText) return "";
+  const found = LUNAR_FESTIVAL_MAP.find(f => lunarText.includes(f.key));
+  return found ? found.name : "";
 }
 
 function getSolarTerm(y,m,d){
@@ -450,15 +454,16 @@ function renderCalendar(){
     if(starType === "星宜日") div.classList.add("star-yi");
 
     const festivalText = getSolarFestival(currentYear, currentMonth, d);
-    const lunarFestivalText = getLunarFestival(lunarRaw);
+    const lunarFestivalText = getLunarFestival(lunarShowText);
     const termText = getSolarTerm(currentYear, currentMonth, d);
 
     const badgeHtml = dayCount > 0 ? `<div class="ev-badge">${dayCount}</div>` : "";
     const starHtml = starType ? `<div class="star-tag">${starType}</div>` : "";
+    const todayStarMark = isToday ? `<span class="today-mark">⭐</span>` : "";
 
     div.innerHTML = `
       ${badgeHtml}
-      <div class="solar">${d}</div>
+      <div class="solar">${d}${todayStarMark}</div>
       <div class="lunar">${lunarShowText}</div>
       ${festivalText ? `<div class="festival">${festivalText}</div>` : ""}
       ${lunarFestivalText ? `<div class="lunar-festival">${lunarFestivalText}</div>` : ""}
