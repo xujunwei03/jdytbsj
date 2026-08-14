@@ -14,10 +14,10 @@
   --today-bg:#e8f4ff;
   --active-bg:#cce5ff;
   --has-ev:#fff2cc;
-  --star-wang:#ffe6e6;
-  --star-ji:#e6f7ff;
-  --star-hao:#e8ffe8;
-  --star-yi:#fff8e6;
+  --star-wang:#ffdddd;  /*星旺日 红色系*/
+  --star-ji:#ffe8cc;    /*星吉日 橙色系*/
+  --star-hao:#e9ddff;   /*星好日 紫色系*/
+  --star-yi:#ddffdd;    /*星宜日 绿色系*/
 }
 html[data-theme="dark"]{
   --bg:#1a1a1a;
@@ -27,16 +27,40 @@ html[data-theme="dark"]{
   --today-bg:#203040;
   --active-bg:#254060;
   --has-ev:#443820;
-  --star-wang:#402020;
-  --star-ji:#203545;
-  --star-hao:#204030;
-  --star-yi:#403820;
+  --star-wang:#4b2222;  /*星旺日 深色模式红色*/
+  --star-ji:#4b3822;    /*星吉日 深色模式橙色*/
+  --star-hao:#382b4b;   /*星好日 深色模式紫色*/
+  --star-yi:#224022;    /*星宜日 深色模式绿色*/
 }
 body{background:var(--bg);color:var(--text);padding:8px;max-width:1200px;margin:0 auto;}
-#ym{font-size:22px;font-weight:bold;text-align:center;margin-bottom:8px;}
+
+/* 头部控制栏布局 */
+.header-wrap{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:12px;
+  margin-bottom:8px;
+}
+#ym{font-size:22px;font-weight:bold;text-align:center;}
+.icon-btn{
+  width:34px;
+  height:34px;
+  border:1px solid var(--border);
+  background:var(--card);
+  color:var(--text);
+  border-radius:6px;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:18px;
+  user-select:none;
+}
 .ctrl-bar{display:flex;gap:6px;justify-content:center;margin-bottom:8px;flex-wrap:wrap;}
 button{padding:5px 10px;border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:4px;cursor:pointer;font-size:14px;}
-#calendar{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;}
+
+#calendar{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;touch-action:pan-y;}
 .day-item{position:relative;border:1px solid var(--border);min-height:82px;padding:3px;border-radius:4px;background:var(--card);overflow:hidden;}
 .day-item.empty{background:transparent;border:none;}
 .day-item.today{background:var(--today-bg);}
@@ -46,12 +70,21 @@ button{padding:5px 10px;border:1px solid var(--border);background:var(--card);co
 .day-item.star-ji{background:var(--star-ji);}
 .day-item.star-hao{background:var(--star-hao);}
 .day-item.star-yi{background:var(--star-yi);}
+
 .solar{font-size:16px;font-weight:bold;position:relative;line-height:1.1;}
-.today-mark{color:#ff3333;margin-left:2px;font-size:14px;}
-.lunar{font-size:12px;opacity:0.85;line-height:1.1;}
+/* 今日星星放在左下角 */
+.today-mark{
+  position:absolute;
+  left:2px;
+  bottom:2px;
+  color:#ff3333;
+  font-size:14px;
+}
+.lunar{font-size:10px;opacity:0.85;line-height:1.1;}
 .festival,.lunar-festival,.solar-term{font-size:11px;color:#d03030;line-height:1.1;}
 .star-tag{font-size:11px;color:#0066aa;font-weight:bold;line-height:1.1;}
 .ev-badge{position:absolute;top:1px;right:1px;background:#d92121;color:#fff;border-radius:99px;font-size:10px;padding:0 3px;min-width:14px;text-align:center;line-height:1.2;}
+
 #infoCard{margin-top:12px;padding:10px;border:1px solid var(--border);border-radius:6px;background:var(--card);display:none;}
 .detail-item{border-top:1px solid var(--border);padding:6px 0;font-size:13px;line-height:1.5;}
 .status-line{margin:4px 0;font-size:12px;line-height:1.3;}
@@ -59,12 +92,13 @@ button{padding:5px 10px;border:1px solid var(--border);background:var(--card);co
 /*手机小屏幕进一步压缩*/
 @media (max-width:480px){
   body{padding:4px;}
-  #ym{font-size:18px;margin-bottom:6px;}
+  #ym{font-size:18px;margin-bottom:0;}
+  .icon-btn{width:30px;height:30px;font-size:16px;}
   .ctrl-bar button{padding:4px 7px;font-size:13px;}
   #calendar{gap:2px;}
   .day-item{min-height:66px;padding:2px;}
   .solar{font-size:14px;}
-  .lunar{font-size:10px;}
+  .lunar{font-size:9px;}
   .festival,.lunar-festival,.solar-term,.star-tag{font-size:9px;}
   .ev-badge{font-size:9px;min-width:12px;}
   .status-line{font-size:11px;}
@@ -73,10 +107,12 @@ button{padding:5px 10px;border:1px solid var(--border);background:var(--card);co
 </head>
 <body>
 
-<div id="ym"></div>
+<div class="header-wrap">
+  <div class="icon-btn" id="prev">◀</div>
+  <div id="ym"></div>
+  <div class="icon-btn" id="next">▶</div>
+</div>
 <div class="ctrl-bar">
-  <button id="prev">上月</button>
-  <button id="next">下月</button>
   <button id="refresh">刷新数据</button>
   <button id="themeBtn">切换深色</button>
 </div>
@@ -394,6 +430,10 @@ const ymEl = $("#ym");
 const infoCard = $("#infoCard");
 const infoText = $("#infoText");
 
+// 滑动手势变量
+let touchStartX = 0;
+let touchEndX = 0;
+
 async function init(){
   const now = new Date();
   currentYear = now.getFullYear();
@@ -478,12 +518,13 @@ function renderCalendar(){
 
     div.innerHTML = `
       ${badgeHtml}
-      <div class="solar">${d}${todayStarMark}</div>
+      <div class="solar">${d}</div>
       <div class="lunar">${lunarShowText}</div>
       ${festivalText ? `<div class="festival">${festivalText}</div>` : ""}
       ${lunarFestivalText ? `<div class="lunar-festival">${lunarFestivalText}</div>` : ""}
       ${termText ? `<div class="solar-term">${termText}</div>` : ""}
       ${starHtml}
+      ${todayStarMark}
     `;
 
     div.dataset.y = currentYear;
@@ -538,24 +579,27 @@ function clickDay(el, evList){
   renderCalendar();
 }
 
-function bindEvent(){
-  $("#prev").onclick = () => {
-    if(loading) return;
-    currentMonth--;
-    if(currentMonth < 1){ currentMonth = 12; currentYear--; }
-    selectItem = null;
-    infoCard.style.display = "none";
-    renderCalendar();
-  };
+// 切换月份逻辑
+function goPrevMonth(){
+  if(loading) return;
+  currentMonth--;
+  if(currentMonth < 1){ currentMonth = 12; currentYear--; }
+  selectItem = null;
+  infoCard.style.display = "none";
+  renderCalendar();
+}
+function goNextMonth(){
+  if(loading) return;
+  currentMonth++;
+  if(currentMonth > 12){ currentMonth = 1; currentYear++; }
+  selectItem = null;
+  infoCard.style.display = "none";
+  renderCalendar();
+}
 
-  $("#next").onclick = () => {
-    if(loading) return;
-    currentMonth++;
-    if(currentMonth > 12){ currentMonth = 1; currentYear++; }
-    selectItem = null;
-    infoCard.style.display = "none";
-    renderCalendar();
-  };
+function bindEvent(){
+  $("#prev").onclick = goPrevMonth;
+  $("#next").onclick = goNextMonth;
 
   $("#refresh").onclick = async () => {
     await loadFeishuJson(true);
@@ -566,6 +610,25 @@ function bindEvent(){
     const html = document.documentElement;
     html.hasAttribute("data-theme") ? (html.removeAttribute("data-theme"), themeBtn.innerText = "切换深色") : (html.setAttribute("data-theme", "dark"), themeBtn.innerText = "切换浅色");
   };
+
+  // 手机左右滑动
+  calendarEl.addEventListener('touchstart', (e)=>{
+    touchStartX = e.changedTouches[0].screenX;
+  },{passive:true});
+  calendarEl.addEventListener('touchend', (e)=>{
+    touchEndX = e.changedTouches[0].screenX;
+    const diff = touchEndX - touchStartX;
+    // 滑动阈值大于50px才触发
+    if(Math.abs(diff) > 50){
+      if(diff < 0){
+        // 向左滑 -> 下月
+        goNextMonth();
+      }else{
+        // 向右滑 -> 上月
+        goPrevMonth();
+      }
+    }
+  },{passive:true});
 }
 
 init();
