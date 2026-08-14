@@ -61,6 +61,23 @@ body{background:var(--bg);color:var(--text);padding:8px;max-width:1200px;margin:
 button{padding:5px 10px;border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:4px;cursor:pointer;font-size:14px;}
 
 #calendar{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;touch-action:pan-y;}
+/*星期头部*/
+.week-header{
+  display:grid;
+  grid-template-columns:repeat(7,1fr);
+  gap:3px;
+  margin-bottom:4px;
+}
+.week-header>div{
+  text-align:center;
+  font-size:13px;
+  font-weight:bold;
+  padding:4px 0;
+  background:var(--card);
+  border-radius:4px;
+  border:1px solid var(--border);
+}
+
 .day-item{position:relative;border:1px solid var(--border);min-height:82px;padding:3px;border-radius:4px;background:var(--card);overflow:hidden;}
 .day-item.empty{background:transparent;border:none;}
 .day-item.today{background:var(--today-bg);}
@@ -96,6 +113,8 @@ button{padding:5px 10px;border:1px solid var(--border);background:var(--card);co
   .icon-btn{width:30px;height:30px;font-size:16px;}
   .ctrl-bar button{padding:4px 7px;font-size:13px;}
   #calendar{gap:2px;}
+  .week-header{gap:2px;margin-bottom:3px;}
+  .week-header>div{font-size:11px;padding:3px 0;}
   .day-item{min-height:66px;padding:2px;}
   .solar{font-size:14px;}
   .lunar{font-size:9px;}
@@ -121,6 +140,17 @@ button{padding:5px 10px;border:1px solid var(--border);background:var(--card);co
 <div class="status-line" id="starStatus"></div>
 <div class="status-line" id="loadStatus"></div>
 <div class="status-line" id="cacheInfo"></div>
+
+<!--星期头部栏-->
+<div class="week-header">
+  <div>日</div>
+  <div>一</div>
+  <div>二</div>
+  <div>三</div>
+  <div>四</div>
+  <div>五</div>
+  <div>六</div>
+</div>
 
 <div id="calendar"></div>
 
