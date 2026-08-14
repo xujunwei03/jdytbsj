@@ -1,3 +1,83 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>宴席农历日历</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:system-ui, sans-serif;}
+:root{
+  --bg:#ffffff;
+  --text:#222;
+  --card:#f7f7f7;
+  --border:#ddd;
+  --today-bg:#e8f4ff;
+  --active-bg:#cce5ff;
+  --has-ev:#fff2cc;
+  --star-wang:#ffe6e6;
+  --star-ji:#e6f7ff;
+  --star-hao:#e8ffe8;
+  --star-yi:#fff8e6;
+}
+html[data-theme="dark"]{
+  --bg:#1a1a1a;
+  --text:#eee;
+  --card:#2a2a2a;
+  --border:#444;
+  --today-bg:#203040;
+  --active-bg:#254060;
+  --has-ev:#443820;
+  --star-wang:#402020;
+  --star-ji:#203545;
+  --star-hao:#204030;
+  --star-yi:#403820;
+}
+body{background:var(--bg);color:var(--text);padding:16px;max-width:1200px;margin:0 auto;}
+#ym{font-size:24px;font-weight:bold;text-align:center;margin-bottom:12px;}
+.ctrl-bar{display:flex;gap:8px;justify-content:center;margin-bottom:12px;}
+button{padding:6px 14px;border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:4px;cursor:pointer;}
+#calendar{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;}
+.day-item{position:relative;border:1px solid var(--border);min-height:90px;padding:4px;border-radius:4px;background:var(--card);}
+.day-item.empty{background:transparent;border:none;}
+.day-item.today{background:var(--today-bg);}
+.day-item.active{background:var(--active-bg);}
+.day-item.has-ev{background:var(--has-ev);}
+.day-item.star-wang{background:var(--star-wang);}
+.day-item.star-ji{background:var(--star-ji);}
+.day-item.star-hao{background:var(--star-hao);}
+.day-item.star-yi{background:var(--star-yi);}
+.solar{font-size:16px;font-weight:bold;}
+.lunar{font-size:12px;opacity:0.85;}
+.festival,.lunar-festival,.solar-term{font-size:11px;color:#d03030;}
+.star-tag{font-size:11px;color:#0066aa;font-weight:bold;}
+.ev-badge{position:absolute;top:2px;right:2px;background:#d92121;color:#fff;border-radius:99px;font-size:11px;padding:0 4px;min-width:16px;text-align:center;}
+#infoCard{margin-top:16px;padding:12px;border:1px solid var(--border);border-radius:6px;background:var(--card);display:none;}
+.detail-item{border-top:1px solid var(--border);padding:8px 0;font-size:14px;line-height:1.6;}
+.status-line{margin:6px 0;font-size:13px;}
+</style>
+</head>
+<body>
+
+<div id="ym"></div>
+<div class="ctrl-bar">
+  <button id="prev">上月</button>
+  <button id="next">下月</button>
+  <button id="refresh">刷新数据</button>
+  <button id="themeBtn">切换深色</button>
+</div>
+
+<div class="status-line" id="lunarLoadStatus"></div>
+<div class="status-line" id="starStatus"></div>
+<div class="status-line" id="loadStatus"></div>
+<div class="status-line" id="cacheInfo"></div>
+
+<div id="calendar"></div>
+
+<div id="infoCard">
+  <div id="infoText"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script>
 // ============================================================
 // 配置区
 // ====================================================
@@ -483,3 +563,7 @@ function bindEvent(){
 }
 
 init();
+</script>
+
+</body>
+</html>
