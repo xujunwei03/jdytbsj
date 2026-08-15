@@ -2,6 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>宴席农历日历</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;font-family:system-ui, sans-serif;}
@@ -31,15 +32,16 @@ html[data-theme="dark"]{
   --star-hao:#382448;
   --star-yi:#204030;
 }
-body{background:var(--bg);color:var(--text);padding:16px;max-width:1200px;margin:0 auto;}
-#ym{font-size:24px;font-weight:bold;text-align:center;margin-bottom:12px;}
-.ctrl-bar{display:flex;gap:8px;justify-content:center;margin-bottom:12px;}
-button{padding:6px 14px;border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:4px;cursor:pointer;}
-/*星期头部*/
-.week-header{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px;}
-.week-header>div{text-align:center;font-weight:bold;padding:4px;color:var(--text);}
-#calendar{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;}
-.day-item{position:relative;border:1px solid var(--border);min-height:90px;padding:4px;border-radius:4px;background:var(--card);}
+body{background:var(--bg);color:var(--text);padding:12px;max-width:1200px;margin:0 auto;}
+#ym{font-size:22px;font-weight:bold;text-align:center;margin-bottom:12px;}
+.ctrl-bar{display:flex;gap:8px;justify-content:center;align-items:center;margin-bottom:12px;}
+button{padding:6px 12px;border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:4px;cursor:pointer;font-size:16px;}
+.status-line{margin:4px 0;font-size:13px;line-height:1.4;}
+/*星期头部 移到状态下方*/
+.week-header{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin:8px 0 4px;}
+.week-header>div{text-align:center;font-weight:bold;padding:4px 2px;color:var(--text);font-size:13px;}
+#calendar{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;touch-action:pan-y;}
+.day-item{position:relative;border:1px solid var(--border);min-height:80px;padding:4px;border-radius:4px;background:var(--card);overflow:hidden;}
 .day-item.empty{background:transparent;border:none;}
 .day-item.today{background:var(--today-bg);}
 .day-item.active{background:var(--active-bg);}
@@ -48,32 +50,46 @@ button{padding:6px 14px;border:1px solid var(--border);background:var(--card);co
 .day-item.star-ji{background:var(--star-ji);}
 .day-item.star-hao{background:var(--star-hao);}
 .day-item.star-yi{background:var(--star-yi);}
-.solar{font-size:16px;font-weight:bold;}
-.lunar{font-size:12px;opacity:0.85;}
-.festival,.lunar-festival,.solar-term{font-size:11px;color:#d03030;}
+.solar{font-size:15px;font-weight:bold;}
+.lunar{font-size:11px;opacity:0.85;}
+.festival,.lunar-festival,.solar-term{font-size:10px;color:#d03030;}
 /* 星日期文字颜色：星旺日红色｜星吉日橙色｜星好日紫色｜星宜日绿色 */
-.star-tag.star-wang{font-size:11px;color:#d82828;font-weight:bold;}
-.star-tag.star-ji{font-size:11px;color:#e67700;font-weight:bold;}
-.star-tag.star-hao{font-size:11px;color:#8833bb;font-weight:bold;}
-.star-tag.star-yi{font-size:11px;color:#109930;font-weight:bold;}
-.ev-badge{position:absolute;top:2px;right:2px;background:#d92121;color:#fff;border-radius:99px;font-size:11px;padding:0 4px;min-width:16px;text-align:center;}
+.star-tag.star-wang{font-size:10px;color:#d82828;font-weight:bold;}
+.star-tag.star-ji{font-size:10px;color:#e67700;font-weight:bold;}
+.star-tag.star-hao{font-size:10px;color:#8833bb;font-weight:bold;}
+.star-tag.star-yi{font-size:10px;color:#109930;font-weight:bold;}
+.ev-badge{position:absolute;top:2px;right:2px;background:#d92121;color:#fff;border-radius:99px;font-size:10px;padding:0 3px;min-width:14px;text-align:center;}
 /* 左下角星星标记 */
-.star-corner{position:absolute;bottom:2px;left:3px;font-size:14px;color:#e67700;font-weight:bold;pointer-events:none;}
-#infoCard{margin-top:16px;padding:12px;border:1px solid var(--border);border-radius:6px;background:var(--card);display:none;}
-.detail-item{border-top:1px solid var(--border);padding:8px 0;font-size:14px;line-height:1.6;}
-.status-line{margin:6px 0;font-size:13px;}
+.star-corner{position:absolute;bottom:2px;left:3px;font-size:13px;color:#e67700;font-weight:bold;pointer-events:none;}
+#infoCard{margin-top:12px;padding:10px;border:1px solid var(--border);border-radius:6px;background:var(--card);display:none;}
+.detail-item{border-top:1px solid var(--border);padding:6px 0;font-size:14px;line-height:1.5;}
+
+/*手机适配*/
+@media(max-width:768px){
+  body{padding:8px;}
+  #ym{font-size:20px;}
+  .day-item{min-height:70px;padding:3px;}
+  .solar{font-size:14px;}
+  .week-header>div{font-size:12px;padding:2px 0;}
+  button{padding:5px 8px;font-size:14px;}
+}
 </style>
 </head>
 <body>
 
 <div id="ym"></div>
 <div class="ctrl-bar">
-  <button id="prev">上月</button>
-  <button id="next">下月</button>
+  <button id="prev">←</button>
   <button id="refresh">刷新数据</button>
   <button id="themeBtn">切换深色</button>
+  <button id="next">→</button>
 </div>
 
+<div class="status-line" id="starStatus"></div>
+<div class="status-line" id="loadStatus"></div>
+<div class="status-line" id="cacheInfo"></div>
+
+<!--星期表头移到数据状态下面-->
 <div class="week-header">
   <div>日</div>
   <div>一</div>
@@ -83,10 +99,6 @@ button{padding:6px 14px;border:1px solid var(--border);background:var(--card);co
   <div>五</div>
   <div>六</div>
 </div>
-
-<div class="status-line" id="starStatus"></div>
-<div class="status-line" id="loadStatus"></div>
-<div class="status-line" id="cacheInfo"></div>
 
 <div id="calendar"></div>
 
@@ -115,6 +127,11 @@ let starDateMap = {};
 let lunarDateMap = {}; // 从 star.xlsx 读取的农历映射：key=公历日期 yyyy-MM-dd，value=农历显示文本
 let fullEventList = [];
 let loading = false;
+
+//触摸滑动变量
+let touchStartX = 0;
+let touchEndX = 0;
+const SWIPE_THRESHOLD = 80;
 
 // ========== 节日配置 ==========
 const SOLAR_FESTIVAL = {
@@ -389,6 +406,42 @@ const ymEl = $("#ym");
 const infoCard = $("#infoCard");
 const infoText = $("#infoText");
 
+//滑动处理
+function handleTouchStart(e){
+  touchStartX = e.changedTouches[0].screenX;
+}
+function handleTouchEnd(e){
+  touchEndX = e.changedTouches[0].screenX;
+  handleSwipe();
+}
+function handleSwipe(){
+  const diffX = touchEndX - touchStartX;
+  //右滑（手指从右往左）→上一月
+  if(diffX > SWIPE_THRESHOLD){
+    goPrevMonth();
+  }
+  //左滑（手指从左往右）→下一月
+  if(diffX < -SWIPE_THRESHOLD){
+    goNextMonth();
+  }
+}
+function goPrevMonth(){
+  if(loading) return;
+  currentMonth--;
+  if(currentMonth < 1){ currentMonth = 12; currentYear--; }
+  selectItem = null;
+  infoCard.style.display = "none";
+  renderCalendar();
+}
+function goNextMonth(){
+  if(loading) return;
+  currentMonth++;
+  if(currentMonth > 12){ currentMonth = 1; currentYear++; }
+  selectItem = null;
+  infoCard.style.display = "none";
+  renderCalendar();
+}
+
 async function init(){
   const now = new Date();
   currentYear = now.getFullYear();
@@ -406,6 +459,10 @@ async function init(){
   }
 
   bindEvent();
+
+  //注册触摸滑动事件
+  calendarEl.addEventListener('touchstart', handleTouchStart, {passive:true});
+  calendarEl.addEventListener('touchend', handleTouchEnd, {passive:true});
 
   // 加载星日期+农历 Excel
   const pExcel = loadStarExcel();
@@ -553,23 +610,8 @@ function clickDay(el, evList){
 }
 
 function bindEvent(){
-  $("#prev").onclick = () => {
-    if(loading) return;
-    currentMonth--;
-    if(currentMonth < 1){ currentMonth = 12; currentYear--; }
-    selectItem = null;
-    infoCard.style.display = "none";
-    renderCalendar();
-  };
-
-  $("#next").onclick = () => {
-    if(loading) return;
-    currentMonth++;
-    if(currentMonth > 12){ currentMonth = 1; currentYear++; }
-    selectItem = null;
-    infoCard.style.display = "none";
-    renderCalendar();
-  };
+  $("#prev").onclick = goPrevMonth;
+  $("#next").onclick = goNextMonth;
 
   $("#refresh").onclick = async () => {
     await loadFeishuJson(true);
