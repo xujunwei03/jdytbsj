@@ -54,6 +54,8 @@ button{padding:6px 14px;border:1px solid var(--border);background:var(--card);co
 .star-tag.star-hao{font-size:11px;color:#8833bb;font-weight:bold;}
 .star-tag.star-yi{font-size:11px;color:#109930;font-weight:bold;}
 .ev-badge{position:absolute;top:2px;right:2px;background:#d92121;color:#fff;border-radius:99px;font-size:11px;padding:0 4px;min-width:16px;text-align:center;}
+/* 左下角星星标记 */
+.star-corner{position:absolute;bottom:2px;left:3px;font-size:14px;color:#e67700;font-weight:bold;pointer-events:none;}
 #infoCard{margin-top:16px;padding:12px;border:1px solid var(--border);border-radius:6px;background:var(--card);display:none;}
 .detail-item{border-top:1px solid var(--border);padding:8px 0;font-size:14px;line-height:1.6;}
 .status-line{margin:6px 0;font-size:13px;}
@@ -437,9 +439,12 @@ function renderCalendar(){
     if(starType === "星好日") starClass = "star-hao";
     if(starType === "星宜日") starClass = "star-yi";
     const starHtml = starType ? `<div class="star-tag ${starClass}">${starType}</div>` : "";
+    // 左下角星星，有星日期才输出
+    const cornerStarHtml = starType ? `<div class="star-corner">★</div>` : "";
 
     div.innerHTML = `
       ${badgeHtml}
+      ${cornerStarHtml}
       <div class="solar">${d}</div>
       <div class="lunar">${lunarShowText}</div>
       ${festivalText ? `<div class="festival">${festivalText}</div>` : ""}
