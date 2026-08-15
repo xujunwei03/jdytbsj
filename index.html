@@ -439,8 +439,8 @@ function renderCalendar(){
     if(starType === "星好日") starClass = "star-hao";
     if(starType === "星宜日") starClass = "star-yi";
     const starHtml = starType ? `<div class="star-tag ${starClass}">${starType}</div>` : "";
-    // 左下角星星，有星日期才输出
-    const cornerStarHtml = starType ? `<div class="star-corner">★</div>` : "";
+    // 【改动】：只真正今天才输出左下角★，不是星日期就标星
+    const cornerStarHtml = isToday ? `<div class="star-corner">★</div>` : "";
 
     div.innerHTML = `
       ${badgeHtml}
