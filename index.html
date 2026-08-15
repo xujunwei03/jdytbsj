@@ -14,9 +14,9 @@
   --active-bg:#cce5ff;
   --has-ev:#fff2cc;
   --star-wang:#ffe6e6;
-  --star-ji:#e6f7ff;
-  --star-hao:#e8ffe8;
-  --star-yi:#fff8e6;
+  --star-ji:#fff2e0;
+  --star-hao:#f3e5ff;
+  --star-yi:#e8ffe8;
 }
 html[data-theme="dark"]{
   --bg:#1a1a1a;
@@ -27,9 +27,9 @@ html[data-theme="dark"]{
   --active-bg:#254060;
   --has-ev:#443820;
   --star-wang:#402020;
-  --star-ji:#203545;
-  --star-hao:#204030;
-  --star-yi:#403820;
+  --star-ji:#463422;
+  --star-hao:#382448;
+  --star-yi:#204030;
 }
 body{background:var(--bg);color:var(--text);padding:16px;max-width:1200px;margin:0 auto;}
 #ym{font-size:24px;font-weight:bold;text-align:center;margin-bottom:12px;}
@@ -48,7 +48,11 @@ button{padding:6px 14px;border:1px solid var(--border);background:var(--card);co
 .solar{font-size:16px;font-weight:bold;}
 .lunar{font-size:12px;opacity:0.85;}
 .festival,.lunar-festival,.solar-term{font-size:11px;color:#d03030;}
-.star-tag{font-size:11px;color:#0066aa;font-weight:bold;}
+/* 星日期文字颜色：星旺日红色｜星吉日橙色｜星好日紫色｜星宜日绿色 */
+.star-tag.star-wang{font-size:11px;color:#d82828;font-weight:bold;}
+.star-tag.star-ji{font-size:11px;color:#e67700;font-weight:bold;}
+.star-tag.star-hao{font-size:11px;color:#8833bb;font-weight:bold;}
+.star-tag.star-yi{font-size:11px;color:#109930;font-weight:bold;}
 .ev-badge{position:absolute;top:2px;right:2px;background:#d92121;color:#fff;border-radius:99px;font-size:11px;padding:0 4px;min-width:16px;text-align:center;}
 #infoCard{margin-top:16px;padding:12px;border:1px solid var(--border);border-radius:6px;background:var(--card);display:none;}
 .detail-item{border-top:1px solid var(--border);padding:8px 0;font-size:14px;line-height:1.6;}
@@ -267,7 +271,7 @@ function getMonthEventFromCache(y,m){
   return fullEventList.filter(item => item.date >= start && item.date <= end);
 }
 
-// ========== 星日期Excel ==========
+// ========== 星日期Excel【修复：字符串日期强制补零】 ==========
 async function loadStarExcel() {
   const statusEl = document.getElementById("starStatus");
   try {
@@ -289,12 +293,18 @@ async function loadStarExcel() {
       if (!dateVal || !starVal) continue;
       let dateStr;
       if (dateVal instanceof Date) {
-        dateStr = dateVal.getFullYear() + "-" + String(dateVal.getMonth() + 1).padStart(2, "0") + "-" + String(dateVal.getDate()).padStart(2, "0");
+        dateStr = dateVal.getFullYear() + "-"
+          + String(dateVal.getMonth() + 1).padStart(2, "0") + "-"
+          + String(dateVal.getDate()).padStart(2, "0");
       } else {
         dateVal = dateVal.toString().trim();
         const parts = dateVal.split(/[\/\-]/);
         if (parts.length === 3) {
-          dateStr = parts[0] + "-" + String(parts[1]).padStart(2, "0") + "-" + String(parts[2]).padStart(2, "0");
+          const y = parts[0].trim();
+          const m = parts[1].trim();
+          const d = parts[2].trim();
+          // 字符串日期强制补两位0，保证key格式统一 yyyy-MM-dd
+          dateStr = `${y}-${String(m).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
         } else {
           continue;
         }
@@ -306,6 +316,7 @@ async function loadStarExcel() {
       statusEl.innerText = `星日期已加载（${Object.keys(map).length}条）`;
       statusEl.style.color = "#0e9f6e";
     }
+    console.log("starDateMap sample keys:", Object.keys(map).slice(0,5));
     return true;
   } catch (e) {
     console.error("星日期Excel加载失败：", e);
@@ -468,7 +479,13 @@ function renderCalendar(){
     const termText = getSolarTerm(currentYear, currentMonth, d);
 
     const badgeHtml = dayCount > 0 ? `<div class="ev-badge">${dayCount}</div>` : "";
-    const starHtml = starType ? `<div class="star-tag">${starType}</div>` : "";
+    // 根据星类型附加对应class，实现文字不同颜色
+    let starClass = "";
+    if(starType === "星旺日") starClass = "star-wang";
+    if(starType === "星吉日") starClass = "star-ji";
+    if(starType === "星好日") starClass = "star-hao";
+    if(starType === "星宜日") starClass = "star-yi";
+    const starHtml = starType ? `<div class="star-tag ${starClass}">${starType}</div>` : "";
 
     div.innerHTML = `
       ${badgeHtml}
