@@ -35,6 +35,9 @@ body{background:var(--bg);color:var(--text);padding:16px;max-width:1200px;margin
 #ym{font-size:24px;font-weight:bold;text-align:center;margin-bottom:12px;}
 .ctrl-bar{display:flex;gap:8px;justify-content:center;margin-bottom:12px;}
 button{padding:6px 14px;border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:4px;cursor:pointer;}
+/*星期头部*/
+.week-header{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px;}
+.week-header>div{text-align:center;font-weight:bold;padding:4px;color:var(--text);}
 #calendar{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;}
 .day-item{position:relative;border:1px solid var(--border);min-height:90px;padding:4px;border-radius:4px;background:var(--card);}
 .day-item.empty{background:transparent;border:none;}
@@ -69,6 +72,16 @@ button{padding:6px 14px;border:1px solid var(--border);background:var(--card);co
   <button id="next">下月</button>
   <button id="refresh">刷新数据</button>
   <button id="themeBtn">切换深色</button>
+</div>
+
+<div class="week-header">
+  <div>日</div>
+  <div>一</div>
+  <div>二</div>
+  <div>三</div>
+  <div>四</div>
+  <div>五</div>
+  <div>六</div>
 </div>
 
 <div class="status-line" id="starStatus"></div>
@@ -218,6 +231,30 @@ function getMonthEventFromCache(y,m){
   return fullEventList.filter(item => item.date >= start && item.date <= end);
 }
 
+//解析农历文本提取月日匹配节日，如“正月初一”→1‑1
+function parseLunarMD(lunarStr){
+  if(!lunarStr||lunarStr==="--")return null;
+  const monthMap={"正月":"1","二月":"2","三月":"3","四月":"4","五月":"5","六月":"6","七月":"7","八月":"8","九月":"9","十月":"10","冬月":"11","腊月":"12"};
+  const dayMap={
+    "初一":"1","初二":"2","初三":"3","初四":"4","初五":"5","初六":"6","初七":"7","初八":"8","初九":"9","初十":"10",
+    "十一":"11","十二":"12","十三":"13","十四":"14","十五":"15","十六":"16","十七":"17","十八":"18","十九":"19","二十":"20",
+    "廿一":"21","廿二":"22","廿三":"23","廿四":"24","廿五":"25","廿六":"26","廿七":"27","廿八":"28","廿九":"29","三十":"30"
+  };
+  let m=null,d=null;
+  for(let mk in monthMap){
+    if(lunarStr.startsWith(mk)){
+      m=monthMap[mk];
+      let dStr=lunarStr.replace(mk,"");
+      for(let dk in dayMap){
+        if(dStr===dk){d=dayMap[dk];break;}
+      }
+      break;
+    }
+  }
+  if(m&&d)return `${m}-${d}`;
+  return null;
+}
+
 // ========== 星日期+农历 Excel【修复：字符串日期强制补零；同时读取农历列】 ==========
 async function loadStarExcel() {
   const statusEl = document.getElementById("starStatus");
@@ -254,7 +291,7 @@ async function loadStarExcel() {
           const y = parts[0].trim();
           const m = parts[1].trim();
           const d = parts[2].trim();
-          // 字符串日期强制补两位0，保证key格式统一 yyyy-MM-dd
+          // 字符串日期强制补两位0，保证key格式统一 yyyy‑MM‑dd
           dateStr = `${y}-${String(m).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
         } else {
           continue;
@@ -269,8 +306,6 @@ async function loadStarExcel() {
       statusEl.innerText = `星日期已加载（${Object.keys(map).length}条），农历已加载（${Object.keys(lMap).length}条）`;
       statusEl.style.color = "#0e9f6e";
     }
-    console.log("starDateMap sample keys:", Object.keys(map).slice(0,5));
-    console.log("lunarDateMap sample:", Object.entries(lMap).slice(0,5));
     return true;
   } catch (e) {
     console.error("星日期Excel加载失败：", e);
@@ -335,8 +370,9 @@ function getSolarFestival(y,m,d){
 }
 
 function getLunarFestival(lunarText){
-  if(!lunarText) return "";
-  return "";
+  const md=parseLunarMD(lunarText);
+  if(!md)return "";
+  return LUNAR_FESTIVAL[md]||"";
 }
 
 function getSolarTerm(y,m,d){
@@ -439,7 +475,7 @@ function renderCalendar(){
     if(starType === "星好日") starClass = "star-hao";
     if(starType === "星宜日") starClass = "star-yi";
     const starHtml = starType ? `<div class="star-tag ${starClass}">${starType}</div>` : "";
-    // 【改动】：只真正今天才输出左下角★，不是星日期就标星
+    // 只真正今天才输出左下角★
     const cornerStarHtml = isToday ? `<div class="star-corner">★</div>` : "";
 
     div.innerHTML = `
@@ -474,7 +510,12 @@ function clickDay(el, evList){
 
   selectItem = { y, m, d };
   const weekArr = ["日","一","二","三","四","五","六"];
-  const w = new Date(y, m - 1, d).getDay();
+  const wIdx = new Date(y, m - 1, d).getDay();
+  const weekText="星期"+weekArr[wIdx];
+
+  const solarFest=getSolarFestival(y,m,d);
+  const lunarFest=getLunarFestival(lunar);
+  const term=getSolarTerm(y,m,d);
 
   infoCard.style.display = "block";
 
@@ -494,9 +535,16 @@ function clickDay(el, evList){
     });
   }
 
+  let festBlock=[];
+  if(solarFest)festBlock.push("公历节日："+solarFest);
+  if(lunarFest)festBlock.push("农历节日："+lunarFest);
+  if(term)festBlock.push("节气："+term);
+  const festHtml=festBlock.length>0?"<div>"+festBlock.join("；")+"</div>":"";
+
   infoText.innerHTML = `
-    <div>公历：${y}-${m}-${d} 星期${weekArr[w]}</div>
+    <div>公历：${y}-${m}-${d} ${weekText}</div>
     <div>农历：${lunar}</div>
+    ${festHtml}
     <div>星日期：${starText}</div>
     <div style="margin:8px 0 4px 0;font-weight:bold">宴席详情（共${evList.length}场）</div>
     ${detailHtml}
