@@ -2,7 +2,6 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
 <title>宴席农历日历</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;font-family:system-ui, sans-serif;}
@@ -14,10 +13,10 @@
   --today-bg:#e8f4ff;
   --active-bg:#cce5ff;
   --has-ev:#fff2cc;
-  --star-wang:#ffdddd;  /*星旺日 红色系*/
-  --star-ji:#ffe8cc;    /*星吉日 橙色系*/
-  --star-hao:#e9ddff;   /*星好日 紫色系*/
-  --star-yi:#ddffdd;    /*星宜日 绿色系*/
+  --star-wang:#ffe6e6;
+  --star-ji:#fff2e0;
+  --star-hao:#f3e5ff;
+  --star-yi:#e8ffe8;
 }
 html[data-theme="dark"]{
   --bg:#1a1a1a;
@@ -27,58 +26,17 @@ html[data-theme="dark"]{
   --today-bg:#203040;
   --active-bg:#254060;
   --has-ev:#443820;
-  --star-wang:#4b2222;  /*星旺日 深色模式红色*/
-  --star-ji:#4b3822;    /*星吉日 深色模式橙色*/
-  --star-hao:#382b4b;   /*星好日 深色模式紫色*/
-  --star-yi:#224022;    /*星宜日 深色模式绿色*/
+  --star-wang:#402020;
+  --star-ji:#463422;
+  --star-hao:#382448;
+  --star-yi:#204030;
 }
-body{background:var(--bg);color:var(--text);padding:8px;max-width:1200px;margin:0 auto;}
-
-/* 头部控制栏布局 */
-.header-wrap{
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  gap:12px;
-  margin-bottom:8px;
-}
-#ym{font-size:22px;font-weight:bold;text-align:center;}
-.icon-btn{
-  width:34px;
-  height:34px;
-  border:1px solid var(--border);
-  background:var(--card);
-  color:var(--text);
-  border-radius:6px;
-  cursor:pointer;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-size:18px;
-  user-select:none;
-}
-.ctrl-bar{display:flex;gap:6px;justify-content:center;margin-bottom:8px;flex-wrap:wrap;}
-button{padding:5px 10px;border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:4px;cursor:pointer;font-size:14px;}
-
-#calendar{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;touch-action:pan-y;}
-/*星期头部*/
-.week-header{
-  display:grid;
-  grid-template-columns:repeat(7,1fr);
-  gap:3px;
-  margin-bottom:4px;
-}
-.week-header>div{
-  text-align:center;
-  font-size:13px;
-  font-weight:bold;
-  padding:4px 0;
-  background:var(--card);
-  border-radius:4px;
-  border:1px solid var(--border);
-}
-
-.day-item{position:relative;border:1px solid var(--border);min-height:82px;padding:3px;border-radius:4px;background:var(--card);overflow:hidden;}
+body{background:var(--bg);color:var(--text);padding:16px;max-width:1200px;margin:0 auto;}
+#ym{font-size:24px;font-weight:bold;text-align:center;margin-bottom:12px;}
+.ctrl-bar{display:flex;gap:8px;justify-content:center;margin-bottom:12px;}
+button{padding:6px 14px;border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:4px;cursor:pointer;}
+#calendar{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;}
+.day-item{position:relative;border:1px solid var(--border);min-height:90px;padding:4px;border-radius:4px;background:var(--card);}
 .day-item.empty{background:transparent;border:none;}
 .day-item.today{background:var(--today-bg);}
 .day-item.active{background:var(--active-bg);}
@@ -87,51 +45,26 @@ button{padding:5px 10px;border:1px solid var(--border);background:var(--card);co
 .day-item.star-ji{background:var(--star-ji);}
 .day-item.star-hao{background:var(--star-hao);}
 .day-item.star-yi{background:var(--star-yi);}
-
-.solar{font-size:16px;font-weight:bold;position:relative;line-height:1.1;}
-/* 今日星星放在左下角 */
-.today-mark{
-  position:absolute;
-  left:2px;
-  bottom:2px;
-  color:#ff3333;
-  font-size:14px;
-}
-.lunar{font-size:10px;opacity:0.85;line-height:1.1;}
-.festival,.lunar-festival,.solar-term{font-size:11px;color:#d03030;line-height:1.1;}
-.star-tag{font-size:11px;color:#0066aa;font-weight:bold;line-height:1.1;}
-.ev-badge{position:absolute;top:1px;right:1px;background:#d92121;color:#fff;border-radius:99px;font-size:10px;padding:0 3px;min-width:14px;text-align:center;line-height:1.2;}
-
-#infoCard{margin-top:12px;padding:10px;border:1px solid var(--border);border-radius:6px;background:var(--card);display:none;}
-.detail-item{border-top:1px solid var(--border);padding:6px 0;font-size:13px;line-height:1.5;}
-.status-line{margin:4px 0;font-size:12px;line-height:1.3;}
-
-/*手机小屏幕进一步压缩*/
-@media (max-width:480px){
-  body{padding:4px;}
-  #ym{font-size:18px;margin-bottom:0;}
-  .icon-btn{width:30px;height:30px;font-size:16px;}
-  .ctrl-bar button{padding:4px 7px;font-size:13px;}
-  #calendar{gap:2px;}
-  .week-header{gap:2px;margin-bottom:3px;}
-  .week-header>div{font-size:11px;padding:3px 0;}
-  .day-item{min-height:66px;padding:2px;}
-  .solar{font-size:14px;}
-  .lunar{font-size:9px;}
-  .festival,.lunar-festival,.solar-term,.star-tag{font-size:9px;}
-  .ev-badge{font-size:9px;min-width:12px;}
-  .status-line{font-size:11px;}
-}
+.solar{font-size:16px;font-weight:bold;}
+.lunar{font-size:12px;opacity:0.85;}
+.festival,.lunar-festival,.solar-term{font-size:11px;color:#d03030;}
+/* 星日期文字颜色：星旺日红色｜星吉日橙色｜星好日紫色｜星宜日绿色 */
+.star-tag.star-wang{font-size:11px;color:#d82828;font-weight:bold;}
+.star-tag.star-ji{font-size:11px;color:#e67700;font-weight:bold;}
+.star-tag.star-hao{font-size:11px;color:#8833bb;font-weight:bold;}
+.star-tag.star-yi{font-size:11px;color:#109930;font-weight:bold;}
+.ev-badge{position:absolute;top:2px;right:2px;background:#d92121;color:#fff;border-radius:99px;font-size:11px;padding:0 4px;min-width:16px;text-align:center;}
+#infoCard{margin-top:16px;padding:12px;border:1px solid var(--border);border-radius:6px;background:var(--card);display:none;}
+.detail-item{border-top:1px solid var(--border);padding:8px 0;font-size:14px;line-height:1.6;}
+.status-line{margin:6px 0;font-size:13px;}
 </style>
 </head>
 <body>
 
-<div class="header-wrap">
-  <div class="icon-btn" id="prev">◀</div>
-  <div id="ym"></div>
-  <div class="icon-btn" id="next">▶</div>
-</div>
+<div id="ym"></div>
 <div class="ctrl-bar">
+  <button id="prev">上月</button>
+  <button id="next">下月</button>
   <button id="refresh">刷新数据</button>
   <button id="themeBtn">切换深色</button>
 </div>
@@ -140,17 +73,6 @@ button{padding:5px 10px;border:1px solid var(--border);background:var(--card);co
 <div class="status-line" id="starStatus"></div>
 <div class="status-line" id="loadStatus"></div>
 <div class="status-line" id="cacheInfo"></div>
-
-<!--星期头部栏-->
-<div class="week-header">
-  <div>日</div>
-  <div>一</div>
-  <div>二</div>
-  <div>三</div>
-  <div>四</div>
-  <div>五</div>
-  <div>六</div>
-</div>
 
 <div id="calendar"></div>
 
@@ -162,25 +84,25 @@ button{padding:5px 10px;border:1px solid var(--border);background:var(--card);co
 <script>
 // ============================================================
 // 配置区
-// ============================================================
+// ====================================================
 const STAR_EXCEL_CONFIG = {
   url: "./star.xlsx",
   sheetName: "",
-  dateColumn: 0,       // 公历日期列（A列=0）
-  starColumn: 1,       // 星日期类型列（B列=1）
-  lunarColumn: 2,      // 农历日列（C列=2），根据实际列号修改
+  dateColumn: 0,
+  starColumn: 1,
   skipHeader: true
 };
 const FESHU_JSON_URL = "./feishu_data.json";
+const LUNAR_DATA_JSON_URL = "./lunar-data.json";
 const LOCAL_STORAGE_KEY = "feishu_banquet_cache";
 const CACHE_TTL = 5 * 60 * 1000;
 
-let starDateMap = {};    // key:公历日期 -> value:星类型
-let starLunarMap = {};   // key:公历日期 -> value:农历显示文本（来自star.xlsx）
+let starDateMap = {};
 let fullEventList = [];
+let hardLunarMap = null; // 外部json完整农历表
 let loading = false;
 
-// ========== 农历中文映射（备用，若star.xlsx农历列是数字则用此转换）==========
+// ======================【农历中文格式化，不再做算法转换，只做展示】======================
 const lunarMonthCn = ["正","二","三","四","五","六","七","八","九","十","冬","腊"];
 const lunarDayCn = [
     "","初一","初二","初三","初四","初五","初六","初七","初八","初九","初十",
@@ -189,20 +111,49 @@ const lunarDayCn = [
 ];
 
 /**
- * 格式化农历显示：
- * - 如果star.xlsx农历列已经是"七月初二"这种文本，直接返回
- * - 如果是数字或对象，做兼容处理
+ * 从hardLunarMap原始对象格式化为展示字符串
+ * @param {Object|null} item {lunarMonthStr,lunarDayStr,isLeap}
  */
-function formatLunarDisplay(rawVal){
-  if(rawVal === null || rawVal === undefined || rawVal === "") return "--";
-  // 已经是字符串，直接展示
-  if(typeof rawVal === "string") return rawVal.trim();
-  // 对象格式 {lunarMonthStr,lunarDayStr,isLeap} 兼容
-  if(typeof rawVal === "object"){
-    const leapTxt = rawVal.isLeap ? "闰" : "";
-    return `${leapTxt}${rawVal.lunarMonthStr || ""}${rawVal.lunarDayStr || ""}`;
+function formatLunarDisplay(item){
+  if(!item || typeof item !== 'object') return "--";
+  const leapTxt = item.isLeap ? "闰" : "";
+  const month = item.lunarMonthStr || "";
+  const day = item.lunarDayStr || "";
+  return `${leapTxt}${month}${day}`;
+}
+
+// ========== 加载外部lunar‑data.json完整农历映射表 ==========
+async function loadLunarDataJson(){
+  const lunarStatusEl = document.getElementById("lunarLoadStatus");
+  try{
+    const resp = await fetch(LUNAR_DATA_JSON_URL);
+    if(!resp.ok) throw new Error("读取lunar‑data.json失败");
+    const rawArray = await resp.json();
+    // 将数组转为key为solar公历日期字符串的对象
+    hardLunarMap = {};
+    for(const item of rawArray) {
+      if(item.solar && item.lunarMonth && item.lunarDay){
+        hardLunarMap[item.solar] = {
+          lunarMonthStr: item.lunarMonth,
+          lunarDayStr: item.lunarDay,
+          isLeap: !!item.isLeapMonth
+        };
+      }
+    }
+    if(lunarStatusEl){
+      lunarStatusEl.innerText = `✅农历数据已载入，共${Object.keys(hardLunarMap).length}条`;
+      lunarStatusEl.style.color="#0e9f6e";
+    }
+    return true;
+  }catch(e){
+    console.error("农历json加载失败",e);
+    if(lunarStatusEl){
+      lunarStatusEl.innerText = "❌农历lunar‑data.json加载失败，请确认文件位置";
+      lunarStatusEl.style.color="#d92121";
+    }
+    hardLunarMap = {};
+    return false;
   }
-  return String(rawVal);
 }
 
 // ========== 节日配置 ==========
@@ -217,18 +168,16 @@ const SOLAR_FESTIVAL = {
   "10-1": "国庆节"
 };
 
-// 农历节日关键词映射，匹配star.xlsx输出的农历文本
-const LUNAR_FESTIVAL_MAP = [
-  {key:"正月初一",name:"春节"},
-  {key:"正月十五",name:"元宵节"},
-  {key:"五月初五",name:"端午节"},
-  {key:"七月初七",name:"七夕"},
-  {key:"八月十五",name:"中秋节"},
-  {key:"九月初九",name:"重阳节"},
-  {key:"腊月初八",name:"腊八"},
-  {key:"腊月三十",name:"除夕"},
-  {key:"腊月廿九",name:"除夕"}
-];
+const LUNAR_FESTIVAL = {
+  "1-1": "春节",
+  "1-15": "元宵节",
+  "5-5": "端午节",
+  "7-7": "七夕",
+  "8-15": "中秋节",
+  "9-9": "重阳节",
+  "12-8": "腊八",
+  "12-30": "除夕"
+};
 
 const SOLAR_TERM = {
   "2024-09-07": "白露",
@@ -322,10 +271,9 @@ function getMonthEventFromCache(y,m){
   return fullEventList.filter(item => item.date >= start && item.date <= end);
 }
 
-// ========== 星日期Excel（同时读取农历列）==========
+// ========== 星日期Excel【修复：字符串日期强制补零】 ==========
 async function loadStarExcel() {
   const statusEl = document.getElementById("starStatus");
-  const lunarStatusEl = document.getElementById("lunarLoadStatus");
   try {
     const resp = await fetch(STAR_EXCEL_CONFIG.url);
     if (!resp.ok) throw new Error("HTTP " + resp.status);
@@ -335,54 +283,46 @@ async function loadStarExcel() {
     const sheet = wb.Sheets[sheetName];
     if (!sheet) throw new Error("找不到工作表：" + sheetName);
     const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false });
-    const starMap = {};
-    const lunarMap = {};
+    const map = {};
     const startIdx = STAR_EXCEL_CONFIG.skipHeader ? 1 : 0;
     for (let i = startIdx; i < rows.length; i++) {
       const row = rows[i];
       if (!row || row.length === 0) continue;
       let dateVal = row[STAR_EXCEL_CONFIG.dateColumn];
       const starVal = (row[STAR_EXCEL_CONFIG.starColumn] || "").toString().trim();
-      const lunarVal = row[STAR_EXCEL_CONFIG.lunarColumn];
-      if (!dateVal) continue;
+      if (!dateVal || !starVal) continue;
       let dateStr;
       if (dateVal instanceof Date) {
-        dateStr = dateVal.getFullYear() + "-" + String(dateVal.getMonth() + 1).padStart(2, "0") + "-" + String(dateVal.getDate()).padStart(2, "0");
+        dateStr = dateVal.getFullYear() + "-"
+          + String(dateVal.getMonth() + 1).padStart(2, "0") + "-"
+          + String(dateVal.getDate()).padStart(2, "0");
       } else {
         dateVal = dateVal.toString().trim();
         const parts = dateVal.split(/[\/\-]/);
         if (parts.length === 3) {
-          dateStr = parts[0] + "-" + String(parts[1]).padStart(2, "0") + "-" + String(parts[2]).padStart(2, "0");
+          const y = parts[0].trim();
+          const m = parts[1].trim();
+          const d = parts[2].trim();
+          // 字符串日期强制补两位0，保证key格式统一 yyyy-MM-dd
+          dateStr = `${y}-${String(m).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
         } else {
           continue;
         }
       }
-      if (starVal) starMap[dateStr] = starVal;
-      if (lunarVal !== undefined && lunarVal !== null && lunarVal !== "") {
-        lunarMap[dateStr] = lunarVal;
-      }
+      map[dateStr] = starVal;
     }
-    starDateMap = starMap;
-    starLunarMap = lunarMap;
-
+    starDateMap = map;
     if(statusEl){
-      statusEl.innerText = `星日期已加载（${Object.keys(starMap).length}条）`;
+      statusEl.innerText = `星日期已加载（${Object.keys(map).length}条）`;
       statusEl.style.color = "#0e9f6e";
     }
-    if(lunarStatusEl){
-      lunarStatusEl.innerText = `✅农历数据已从star.xlsx载入，共${Object.keys(lunarMap).length}条`;
-      lunarStatusEl.style.color = "#0e9f6e";
-    }
+    console.log("starDateMap sample keys:", Object.keys(map).slice(0,5));
     return true;
   } catch (e) {
     console.error("星日期Excel加载失败：", e);
     if(statusEl){
       statusEl.innerText = "星日期加载失败（不影响其他功能）";
       statusEl.style.color = "#d92121";
-    }
-    if(lunarStatusEl){
-      lunarStatusEl.innerText = "❌农历加载失败，请确认star.xlsx农历列配置";
-      lunarStatusEl.style.color = "#d92121";
     }
     return false;
   }
@@ -440,10 +380,9 @@ function getSolarFestival(y,m,d){
   return SOLAR_FESTIVAL[k] || "";
 }
 
-function getLunarFestival(lunarText){
-  if(!lunarText) return "";
-  const found = LUNAR_FESTIVAL_MAP.find(f => lunarText.includes(f.key));
-  return found ? found.name : "";
+function getLunarFestival(lunarObj){
+  if(!lunarObj) return "";
+  return "";
 }
 
 function getSolarTerm(y,m,d){
@@ -459,10 +398,6 @@ const calendarEl = $("#calendar");
 const ymEl = $("#ym");
 const infoCard = $("#infoCard");
 const infoText = $("#infoText");
-
-// 滑动手势变量
-let touchStartX = 0;
-let touchEndX = 0;
 
 async function init(){
   const now = new Date();
@@ -482,13 +417,15 @@ async function init(){
 
   bindEvent();
 
-  // 只加载star.xlsx（含农历）和宴席数据
+  // 并行加载3个资源
+  const pLunar = loadLunarDataJson();
   const pExcel = loadStarExcel();
   if(cache === null || isCacheExpired(cache)){
     loadFeishuJson(false);
   }
-  await pExcel;
+  await Promise.all([pLunar,pExcel]);
 
+  // 资源加载完毕，再渲染日历
   renderCalendar();
 }
 
@@ -519,9 +456,8 @@ function renderCalendar(){
   for(let d = 1; d <= totalDay; d++){
     const div = document.createElement("div");
     const dateStr = `${currentYear}-${String(currentMonth).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
-    // 农历从star.xlsx的starLunarMap取
-    const lunarRaw = starLunarMap[dateStr];
-    const lunarShowText = formatLunarDisplay(lunarRaw);
+    const lunarRaw = hardLunarMap ? hardLunarMap[dateStr] : null;
+    const lunarShowText = formatLunarDisplay(lunarRaw ?? null);
 
     const isToday = (ty === currentYear && tm === currentMonth && td === d);
     const isSelect = selectItem && selectItem.y === currentYear && selectItem.m === currentMonth && selectItem.d === d;
@@ -539,12 +475,17 @@ function renderCalendar(){
     if(starType === "星宜日") div.classList.add("star-yi");
 
     const festivalText = getSolarFestival(currentYear, currentMonth, d);
-    const lunarFestivalText = getLunarFestival(lunarShowText);
+    const lunarFestivalText = getLunarFestival(lunarRaw);
     const termText = getSolarTerm(currentYear, currentMonth, d);
 
     const badgeHtml = dayCount > 0 ? `<div class="ev-badge">${dayCount}</div>` : "";
-    const starHtml = starType ? `<div class="star-tag">${starType}</div>` : "";
-    const todayStarMark = isToday ? `<span class="today-mark">⭐</span>` : "";
+    // 根据星类型附加对应class，实现文字不同颜色
+    let starClass = "";
+    if(starType === "星旺日") starClass = "star-wang";
+    if(starType === "星吉日") starClass = "star-ji";
+    if(starType === "星好日") starClass = "star-hao";
+    if(starType === "星宜日") starClass = "star-yi";
+    const starHtml = starType ? `<div class="star-tag ${starClass}">${starType}</div>` : "";
 
     div.innerHTML = `
       ${badgeHtml}
@@ -554,13 +495,12 @@ function renderCalendar(){
       ${lunarFestivalText ? `<div class="lunar-festival">${lunarFestivalText}</div>` : ""}
       ${termText ? `<div class="solar-term">${termText}</div>` : ""}
       ${starHtml}
-      ${todayStarMark}
     `;
 
     div.dataset.y = currentYear;
     div.dataset.m = currentMonth;
     div.dataset.d = d;
-    div.dataset.lunar = lunarShowText;
+    div.dataset.lunar = JSON.stringify(lunarRaw||{});
     div.dataset.star = starType;
     div.dataset.dateStr = dateStr;
     div.onclick = () => clickDay(div, dayEvList);
@@ -572,11 +512,11 @@ function clickDay(el, evList){
   const y = Number(el.dataset.y);
   const m = Number(el.dataset.m);
   const d = Number(el.dataset.d);
-  const lunarText = el.dataset.lunar || "--";
+  const lunar = JSON.parse(el.dataset.lunar);
   const starText = el.dataset.star || "无星日期";
   const dateStr = el.dataset.dateStr;
 
-  selectItem = { y, m, d, lunar: lunarText };
+  selectItem = { y, m, d, lunar };
   const weekArr = ["日","一","二","三","四","五","六"];
   const w = new Date(y, m - 1, d).getDay();
 
@@ -601,7 +541,7 @@ function clickDay(el, evList){
 
   infoText.innerHTML = `
     <div>公历：${y}-${m}-${d} 星期${weekArr[w]}</div>
-    <div>农历：${lunarText}</div>
+    <div>农历：${formatLunarDisplay(lunar)}</div>
     <div>星日期：${starText}</div>
     <div style="margin:8px 0 4px 0;font-weight:bold">宴席详情（共${evList.length}场）</div>
     ${detailHtml}
@@ -609,27 +549,24 @@ function clickDay(el, evList){
   renderCalendar();
 }
 
-// 切换月份逻辑
-function goPrevMonth(){
-  if(loading) return;
-  currentMonth--;
-  if(currentMonth < 1){ currentMonth = 12; currentYear--; }
-  selectItem = null;
-  infoCard.style.display = "none";
-  renderCalendar();
-}
-function goNextMonth(){
-  if(loading) return;
-  currentMonth++;
-  if(currentMonth > 12){ currentMonth = 1; currentYear++; }
-  selectItem = null;
-  infoCard.style.display = "none";
-  renderCalendar();
-}
-
 function bindEvent(){
-  $("#prev").onclick = goPrevMonth;
-  $("#next").onclick = goNextMonth;
+  $("#prev").onclick = () => {
+    if(loading) return;
+    currentMonth--;
+    if(currentMonth < 1){ currentMonth = 12; currentYear--; }
+    selectItem = null;
+    infoCard.style.display = "none";
+    renderCalendar();
+  };
+
+  $("#next").onclick = () => {
+    if(loading) return;
+    currentMonth++;
+    if(currentMonth > 12){ currentMonth = 1; currentYear++; }
+    selectItem = null;
+    infoCard.style.display = "none";
+    renderCalendar();
+  };
 
   $("#refresh").onclick = async () => {
     await loadFeishuJson(true);
@@ -640,25 +577,6 @@ function bindEvent(){
     const html = document.documentElement;
     html.hasAttribute("data-theme") ? (html.removeAttribute("data-theme"), themeBtn.innerText = "切换深色") : (html.setAttribute("data-theme", "dark"), themeBtn.innerText = "切换浅色");
   };
-
-  // 手机左右滑动
-  calendarEl.addEventListener('touchstart', (e)=>{
-    touchStartX = e.changedTouches[0].screenX;
-  },{passive:true});
-  calendarEl.addEventListener('touchend', (e)=>{
-    touchEndX = e.changedTouches[0].screenX;
-    const diff = touchEndX - touchStartX;
-    // 滑动阈值大于50px才触发
-    if(Math.abs(diff) > 50){
-      if(diff < 0){
-        // 向左滑 -> 下月
-        goNextMonth();
-      }else{
-        // 向右滑 -> 上月
-        goPrevMonth();
-      }
-    }
-  },{passive:true});
 }
 
 init();
