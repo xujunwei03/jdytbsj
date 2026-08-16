@@ -13,27 +13,11 @@ KEY_DATE = "宴会日期"
 KEY_CUSTOMER = "档期属性"
 KEY_STATUS = "预定情况"
 KEY_BANQUET_HALL = "宴会厅"
-KEY_THEME = "客户 | 宴会主题"
+KEY_THEME = "客户|宴会主题"
 KEY_SALES = "销售负责人"
 KEY_TABLE_NUM = "桌数"
+KEY_SHOP = "门店"   # 新增门店字段，和飞书多维表显示名字完全一致
 # ========================================================
-
-def get_text_value(val):
-    """新增：处理飞书单选、多选、人员字段，取出文本字符串，修复对象导出问题"""
-    if val is None:
-        return ""
-    if isinstance(val, list):
-        tmp = []
-        for i in val:
-            if isinstance(i, dict):
-                tmp.append(i.get("text", i.get("name", "")))
-            else:
-                tmp.append(str(i))
-        return ",".join(tmp)
-    if isinstance(val, dict):
-        return val.get("text", val.get("name", ""))
-    return str(val).strip()
-
 
 def get_tenant_access_token():
     url = "https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal"
@@ -73,49 +57,49 @@ def transform(records):
     for idx, row in enumerate(records):
         f = row["fields"]
         if idx < 2:
-            print("\n===== 第 {} 条调试信息 ====".format(idx+1))
+            print("\n=====第{}条调试信息====".format(idx+1))
             print("宴会日期原始值:", f.get(KEY_DATE))
             print("宴会厅原始值:", f.get(KEY_BANQUET_HALL))
+            print("门店原始值:", f.get(KEY_SHOP))  # 调试打印门店
 
         raw_date = f.get(KEY_DATE)
         party_date = None
 
-        # 情况 1：直接数字毫秒戳，修复时区，强制东八区
+        # 情况1：直接数字毫秒戳
         if isinstance(raw_date, int):
-            ts = raw_date / 1000
-            # UTC时间 +8小时转为北京时间，解决github服务器时区偏移
-            dt = datetime.utcfromtimestamp(ts + 8 * 3600)
+            ts = raw_date
+            dt = datetime.fromtimestamp(ts / 1000)
             party_date = dt.strftime("%Y-%m-%d")
-        # 情况 2：数组 [时间戳，时区]，使用飞书自带时区偏移
+        # 情况2：数组 [时间戳, 时区]
         elif isinstance(raw_date, list) and len(raw_date) >= 1 and isinstance(raw_date[0], int):
-            ts_ms = raw_date[0]
-            offset = raw_date[1] if len(raw_date)>=2 else 8
-            ts = ts_ms / 1000
-            dt = datetime.utcfromtimestamp(ts + offset * 3600)
+            ts = raw_date[0]
+            dt = datetime.fromtimestamp(ts / 1000)
             party_date = dt.strftime("%Y-%m-%d")
-        # 情况 3：已经是字符串日期
+        # 情况3：已经是字符串日期
         elif isinstance(raw_date, str):
             party_date = raw_date.strip()
 
-        banquect_hall_val = get_text_value(f.get(KEY_BANQUET_HALL))
+        banquect_hall_val = f.get(KEY_BANQUET_HALL)
+        shop_val = f.get(KEY_SHOP)  # 获取门店
 
-        # 过滤：宴会日期为空 或者 宴会厅为空 / None，都跳过不导出
-        if (party_date is None or party_date == "") or (banquect_hall_val is None or banquect_hall_val == ""):
+        # 过滤：宴会日期为空 或者 宴会厅为空/None，都跳过不导出；门店允许为空
+        if (party_date is None or party_date == "") or (banquect_hall_val is None or str(banquect_hall_val).strip() == ""):
             skip_count += 1
             continue
 
         item = {
             "宴会日期": party_date,
-            "档期属性": get_text_value(f.get(KEY_CUSTOMER)),
-            "预定情况": get_text_value(f.get(KEY_STATUS)),
+            "档期属性": f.get(KEY_CUSTOMER),
+            "预定情况": f.get(KEY_STATUS),
             "宴会厅": banquect_hall_val,
-            "客户 | 宴会主题": get_text_value(f.get(KEY_THEME)),
-            "销售负责人": get_text_value(f.get(KEY_SALES)),
-            "桌数": get_text_value(f.get(KEY_TABLE_NUM))
+            "门店": shop_val,   # 输出增加门店字段
+            "客户|宴会主题": f.get(KEY_THEME),
+            "销售负责人": f.get(KEY_SALES),
+            "桌数": f.get(KEY_TABLE_NUM)
         }
         output.append(item)
 
-    print(f"\n⚠️跳过记录（无宴会日期 或 宴会厅为空）：{skip_count} 条")
+    print(f"\n⚠️跳过记录（无宴会日期 或 宴会厅为空）：{skip_count}条")
     return output
 
 
