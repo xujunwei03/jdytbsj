@@ -1,6 +1,6 @@
 import requests
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # ====================== 填入你的参数 ======================
 APP_ID = "cli_aaeb5fcd9c381be4"
@@ -88,18 +88,22 @@ def transform(records):
         # 情况1：dict对象 {"time":毫秒,"timezone":"xxx"} 【飞书新版时间字段】
         if isinstance(raw_date, dict) and "time" in raw_date:
             ts = raw_date["time"]
-            dt = datetime.fromtimestamp(ts / 1000)
-            party_date = dt.strftime("%Y-%m-%d")
+            # GitHub Actions是UTC时区，+8小时转为北京时间
+            dt_utc = datetime.utcfromtimestamp(ts / 1000)
+            dt_beijing = dt_utc + timedelta(hours=8)
+            party_date = dt_beijing.strftime("%Y-%m-%d")
         # 情况2：直接数字毫秒戳
         elif isinstance(raw_date, int):
             ts = raw_date
-            dt = datetime.fromtimestamp(ts / 1000)
-            party_date = dt.strftime("%Y-%m-%d")
+            dt_utc = datetime.utcfromtimestamp(ts / 1000)
+            dt_beijing = dt_utc + timedelta(hours=8)
+            party_date = dt_beijing.strftime("%Y-%m-%d")
         # 情况3：数组 [时间戳, 时区]
         elif isinstance(raw_date, list) and len(raw_date) >= 1 and isinstance(raw_date[0], int):
             ts = raw_date[0]
-            dt = datetime.fromtimestamp(ts / 1000)
-            party_date = dt.strftime("%Y-%m-%d")
+            dt_utc = datetime.utcfromtimestamp(ts / 1000)
+            dt_beijing = dt_utc + timedelta(hours=8)
+            party_date = dt_beijing.strftime("%Y-%m-%d")
         # 情况4：已经是字符串日期
         elif isinstance(raw_date, str):
             party_date = raw_date.strip()
