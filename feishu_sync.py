@@ -13,7 +13,7 @@ UI_DATE = "宴会日期"
 UI_CUSTOMER = "档期属性"
 UI_STATUS = "预定情况"
 UI_BANQUET_HALL = "宴会厅"
-UI_THEME = "客户 | 宴会主题"
+UI_THEME = "客户|宴会主题"
 UI_SALES = "销售负责人"
 UI_TABLE_NUM = "桌数"
 # ========================================================
