@@ -76,17 +76,20 @@ button{padding:6px 12px;border:1px solid var(--border);background:var(--card);co
 #monthHallTable {border-collapse:collapse;width:100%;font-size:12px;}
 #monthHallTable th,#monthHallTable td {border:1px solid var(--border);padding:3px 2px;min-width:32px;vertical-align:top;}
 #monthHallTable th {background:var(--card);position:sticky;top:0;}
-/*厅名列加宽，强制单行不换行，增加 relative 用于角标定位*/
+/*厅名列：固定宽度容纳5个汉字，冻结列，文字超出显示省略号，relative用于角标定位*/
 .hall-name-th {
 position:sticky;
 left:0;
 background:var(--card);
 z-index:2;
-min-width:160px;
-width:160px;
+width:90px;
+min-width:90px;
+max-width:90px;
 text-align:left;
-padding:4px 22px 4px 6px; /* 右侧留出空白，防止文字和角标重叠 */
+padding:4px 22px 4px 6px;
 white-space:nowrap;
+overflow:hidden;
+text-overflow:ellipsis;
 position: relative;
 }
 /*右下角红色角标：本月预定场数，可点击 */
@@ -157,11 +160,12 @@ body{padding:8px;}
 .week-header>div{font-size:12px;padding:2px 0;}
 button{padding:5px 8px;font-size:14px;}
 .tab-btn{font-size:14px;padding:4px 10px;}
-/*手机端：加宽厅名列，给数字角标留出位置*/
+/*手机端：5汉字固定宽度，冻结列*/
 .hall-name-th{
-    min-width:180px;
-    width:180px;
-    padding:4px 24px 4px 6px;
+    min-width:90px;
+    width:90px;
+    max-width:90px;
+    padding:4px 22px 4px 6px;
     font-size:13px;
 }
 .hall-badge-count{
