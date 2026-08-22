@@ -77,7 +77,7 @@ button{padding:6px 12px;border:1px solid var(--border);background:var(--card);co
 #monthHallTable {border-collapse:collapse;width:100%;font-size:12px;}
 #monthHallTable th,#monthHallTable td {border:1px solid var(--border);padding:3px 2px;min-width:32px;vertical-align:top;}
 #monthHallTable th {background:var(--card);position:sticky;top:0;}
-/*厅名列加宽，强制单行不换行*/
+/*厅名列加宽，强制单行不换行，增加relative用于角标定位*/
 .hall-name-th {
     position:sticky;
     left:0;
@@ -88,16 +88,19 @@ button{padding:6px 12px;border:1px solid var(--border);background:var(--card);co
     text-align:left;
     padding:4px 6px;
     white-space:nowrap;
+    position: relative;
 }
-.hall-count-td{
-    min-width:45px;
-    text-align:center;
-}
-.hall-count-num{
+/*右下角红色角标：本月预定场数，可点击*/
+.hall-badge-count{
+    position:absolute;
+    bottom:2px;
+    right:4px;
     color:red;
     font-weight:bold;
+    font-size:12px;
     cursor:pointer;
 }
+
 .cell-ev-item {
     font-size:11px;padding:1px 2px;margin:1px 0;border-radius:2px;background:#cce0ff;white-space:nowrap;
 }
@@ -105,7 +108,7 @@ button{padding:6px 12px;border:1px solid var(--border);background:var(--card);co
 .text-wan{color:#9c27b0;/*晚-紫色*/}
 html [data-theme="dark"] .cell-ev-item {background:#284060;color:#e0edff;}
 
-/*月场地右下角状态信息区域（截图2红框移至此）*/
+/*月场地右下角状态信息区域*/
 .month-status-footer{
     text-align:right;
     margin-top:6px;
@@ -113,7 +116,7 @@ html [data-theme="dark"] .cell-ev-item {background:#284060;color:#e0edff;}
     line-height:1.4;
 }
 
-/*弹窗 截图3*/
+/*弹窗 */
 .modal-mask{
     position:fixed;
     inset:0;
@@ -191,7 +194,6 @@ button{padding:5px 8px;font-size:14px;}
 <div class="month-table-wrap">
 <table id="monthHallTable"></table>
 </div>
-<!--原顶部状态信息，移动到表格右下角-->
 <div class="month-status-footer">
 <div class="status-line" id="starStatusMonth"></div>
 <div class="status-line" id="loadStatusMonth"></div>
@@ -199,7 +201,6 @@ button{padding:5px 8px;font-size:14px;}
 </div>
 </div>
 
-<!--弹窗DOM 截图3-->
 <div class="modal-mask" id="hallModalMask">
 <div class="modal-box">
 <div id="hallModalContent"></div>
@@ -226,7 +227,7 @@ const FESHU_JSON_URL = "./feishu_data.json";
 const LOCAL_STORAGE_KEY = "feishu_banquet_cache";
 const CACHE_TTL = 5 * 60 * 1000;
 
-//=====【新增：月场地固定宴会厅列表】=====
+//=====【月场地固定宴会厅列表】=====
 const HALL_FIX_LIST = ["星眸厅","星月厅","星璨厅","星梦厅","星云厅","星享厅","雨湖厅","昭山厅","韶山厅","湘潭厅"];
 
 let starDateMap = {};
@@ -492,7 +493,7 @@ cacheInfoMonth.style.color = "#0e9f6e";
 }
 
 renderCalendar();
-renderMonthHallTable();//刷新月场地
+renderMonthHallTable();
 const loadText = `✅已同步全部宴席${fullEventList.length}条`;
 if(loadStatus) loadStatus.innerText = loadText;
 if(loadStatusMonth) loadStatusMonth.innerText = loadText;
@@ -547,16 +548,13 @@ hallModalMask.classList.remove("show");
 }
 };
 
-/**打开厅详情弹窗 截图3效果*/
+/**打开厅详情弹窗 和截图2完全一样*/
 function openHallDetailModal(hallName, y, m){
 const totalDay = new Date(y,m,0).getDate();
 const monthEv = getMonthEventFromCache(y, m);
-//该厅本月全部宴席
 const hallEvAll = monthEv.filter(e=>e.hall === hallName);
-//预定日期集合
 const bookedDateSet = new Set();
 hallEvAll.forEach(ev=>bookedDateSet.add(ev.date));
-//空闲日期
 const freeDateList = [];
 for(let d=1;d<=totalDay;d++){
 const ds = `${y}-${String(m).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
@@ -618,26 +616,24 @@ renderCalendar();
 renderMonthHallTable();
 }
 
-//=====【修改：渲染月场地宴会厅横向表格】====
+//=====渲染月场地宴会厅横向表格【修改：红色数字放在厅名单元格右下角角标，删除末尾列】====
 function renderMonthHallTable(){
 const table = $("#monthHallTable");
 const totalDay = new Date(currentYear, currentMonth, 0).getDate();
 const monthEv = getMonthEventFromCache(currentYear, currentMonth);
 
-//组装表头，追加一列用于放场次统计
+//表头：场地 + 1~31号日期，不再增加“本月场数”列
 let html = "<thead><tr><th class='hall-name-th'>场地</th>";
 for(let d=1;d<=totalDay;d++){
 html += `<th>${d}</th>`;
 }
-html += `<th class="hall-count-td">本月场数</th></tr></thead><tbody>`;
+html += `</tr></thead><tbody>`;
 
-//每行：宴会厅
 for(const hallName of HALL_FIX_LIST){
-//过滤该厅本月所有事件
 const hallMonthEv = monthEv.filter(e=>e.hall===hallName);
 const totalBook = hallMonthEv.length;
 
-html += `<tr><td class='hall-name-th'>${hallName}</td>`;
+html += `<tr><td class='hall-name-th'>${hallName}<span class="hall-badge-count" data-hall="${hallName}">${totalBook}</span></td>`;
 for(let d=1;d<=totalDay;d++){
 const ds = `${currentYear}-${String(currentMonth).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
 const cellEv = monthEv.filter(e=>e.date===ds && e.hall===hallName);
@@ -646,26 +642,21 @@ if(cellEv.length>0){
 for(const ev of cellEv){
 let disp = ev.partyType||"";
 if(ev.timePeriod) disp += " "+ev.timePeriod;
-//判断午/晚，设置颜色class
 let cls = "cell-ev-item";
 if(disp.includes("午")) cls += " text-wu";
 if(disp.includes("晚")) cls += " text-wan";
 cellContent += `<div class="${cls}">${disp}</div>`;
 }
 }
-//无宴席，直接空，不输出“空”
 html += `<td>${cellContent}</td>`;
 }
-//末尾红色可点击数字
-html += `<td class="hall-count-td">
-<span class="hall-count-num" data-hall="${hallName}">${totalBook}</span>
-</td></tr>`;
+html += `</tr>`;
 }
 html += "</tbody>";
 table.innerHTML = html;
 
-//绑定点击统计数字打开弹窗事件
-document.querySelectorAll(".hall-count-num").forEach(el=>{
+//绑定角标点击事件
+document.querySelectorAll(".hall-badge-count").forEach(el=>{
 el.onclick = ()=>{
 const h = el.dataset.hall;
 openHallDetailModal(h, currentYear, currentMonth);
