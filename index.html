@@ -788,6 +788,7 @@ calendarEl.appendChild(div);
 }
 }
 
+// 已修改：增加宴会厅字段
 function clickDay(el, evList){
 const y = Number(el.dataset.y);
 const m = Number(el.dataset.m);
@@ -815,6 +816,7 @@ evList.forEach(ev => {
 detailHtml += `
 <div class="detail-item">
 <div>👤客户|宴会主题：${ev.customer || "未填写"}</div>
+<div>🏨宴会厅：${ev.hall || "未填写"}</div>
 <div>⏰宴会时段：${ev.timePeriod || "未填写"}</div>
 <div>🎉宴会类型：${ev.partyType || "未填写"}</div>
 <div>🪑桌数：${ev.table || "未填写"}</div>
