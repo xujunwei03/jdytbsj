@@ -354,7 +354,9 @@ async function loadFeishuJson(forceRefresh = false){
         customer: item["客户|宴会主题"] || "",
         table: item["桌数"] || "",
         sales: item["销售负责人"] || "",
-        title: item["预定情况"] || ""
+        title: item["预定情况"] || "",
+        timePeriod: item["宴会时段"] || "",
+        partyType: item["宴会类型"] || ""
       }
     }).filter(item => !!item.date);
 
@@ -584,6 +586,8 @@ function clickDay(el, evList){
       detailHtml += `
       <div class="detail-item">
         <div>👤客户|宴会主题：${ev.customer || "未填写"}</div>
+        <div>⏰宴会时段：${ev.timePeriod || "未填写"}</div>
+        <div>🎉宴会类型：${ev.partyType || "未填写"}</div>
         <div>🪑桌数：${ev.table || "未填写"}</div>
         <div>👔销售负责人：${ev.sales || ""}</div>
         <div>📋预定情况：${ev.title || ""}</div>
