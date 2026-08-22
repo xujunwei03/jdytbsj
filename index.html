@@ -71,10 +71,13 @@ button{padding:6px 12px;border:1px solid var(--border);background:var(--card);co
 #infoCard{margin-top:12px;padding:10px;border:1px solid var(--border);border-radius:6px;background:var(--card);display:none;}
 .detail-item{border-top:1px solid var(--border);padding:6px 0;font-size:14px;line-height:1.5;}
 
-/* ====== 月场地横向表格【修改冻结列】====== */
+/* ====== 月场地横向表格【修复移动端冻结列】====== */
+/*关键：滚动容器必须设置 position:relative，sticky left才能生效*/
 .month-table-wrap {
     overflow-x: auto;
     overflow-y: visible;
+    position: relative;
+    -webkit-overflow-scrolling: touch; /*ios顺滑滚动*/
 }
 #monthHallTable {
     border-collapse: collapse;
@@ -92,7 +95,7 @@ button{padding:6px 12px;border:1px solid var(--border);background:var(--card);co
     background:var(--card);
 }
 
-/*===== 场地列：表头 + 全部数据行，固定冻结，宽度110px刚好6个汉字 =====*/
+/*===== 场地冻结列：表头 + 全部数据行，固定冻结，宽度110px刚好6个汉字 =====*/
 .hall-name-th,
 .hall-name-td {
     position: sticky !important;
@@ -101,7 +104,7 @@ button{padding:6px 12px;border:1px solid var(--border);background:var(--card);co
     min-width: 110px !important;
     max-width: 110px !important;
     background: var(--card) !important;
-    z-index: 3 !important;
+    z-index: 10 !important; /*提高层级，盖住滚动过来的单元格*/
     text-align:left;
     padding:4px 24px 4px 6px;
     white-space:nowrap;
@@ -177,7 +180,7 @@ body{padding:8px;}
 .week-header>div{font-size:12px;padding:2px 0;}
 button{padding:5px 8px;font-size:14px;}
 .tab-btn{font-size:14px;padding:4px 10px;}
-/*手机端场地冻结列固定110px，保证6汉字完整显示*/
+/*手机端场地冻结列固定110px，保证6汉字完整显示，sticky继续生效*/
 .hall-name-th,
 .hall-name-td{
     width:110px !important;
@@ -185,6 +188,9 @@ button{padding:5px 8px;font-size:14px;}
     max-width:110px !important;
     padding:4px 22px 4px 6px;
     font-size:13px;
+    position:sticky !important;
+    left:0 !important;
+    z-index:10 !important;
 }
 .hall-badge-count{
     font-size:13px;
