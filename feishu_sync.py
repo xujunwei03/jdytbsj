@@ -8,7 +8,7 @@ APP_SECRET = "mQ44mQYBgQ95EFAZDKnD9dz28yF82qZd"
 BASE_APP_TOKEN = "LGPLbjHcfabcIDsxzlQcx8zfnQf"
 TABLE_ID = "tblkokV3rEdH4xUN"
 
-# 中文字段名（飞书多维表里的字段显示名称）
+# 中文字段名（飞书多维表里的字段显示名称，务必和表里面一字不差）
 KEY_DATE = "宴会日期"
 KEY_CUSTOMER = "档期属性"
 KEY_STATUS = "预定情况"
@@ -16,7 +16,9 @@ KEY_BANQUET_HALL = "宴会厅"
 KEY_THEME = "客户|宴会主题"
 KEY_SALES = "销售负责人"
 KEY_TABLE_NUM = "桌数"
-KEY_SHOP = "门店"   # 新增门店字段，和飞书多维表显示名字完全一致
+KEY_SHOP = "门店"
+KEY_TIME_PERIOD = "宴会时段"
+KEY_PARTY_TYPE = "宴会类型"
 # ========================================================
 
 
@@ -81,6 +83,8 @@ def transform(records):
             print("宴会日期原始值:", f.get(KEY_DATE))
             print("宴会厅原始值:", f.get(KEY_BANQUET_HALL))
             print("门店原始值:", f.get(KEY_SHOP))
+            print("宴会时段原始值:", f.get(KEY_TIME_PERIOD))
+            print("宴会类型原始值:", f.get(KEY_PARTY_TYPE))
 
         raw_date = f.get(KEY_DATE)
         party_date = None
@@ -110,8 +114,10 @@ def transform(records):
 
         banquect_hall_val = parse_field(f.get(KEY_BANQUET_HALL))
         shop_val = parse_field(f.get(KEY_SHOP))
+        time_period_val = parse_field(f.get(KEY_TIME_PERIOD))
+        party_type_val = parse_field(f.get(KEY_PARTY_TYPE))
 
-        # 过滤：宴会日期为空 或者 宴会厅为空/None，都跳过不导出；门店允许为空
+        # 仅过滤：宴会日期为空 或者 宴会厅为空；时段、类型、门店允许为空
         if (party_date is None or party_date == "") or (banquect_hall_val == ""):
             skip_count += 1
             continue
@@ -122,6 +128,8 @@ def transform(records):
             "预定情况": parse_field(f.get(KEY_STATUS)),
             "宴会厅": banquect_hall_val,
             "门店": shop_val,
+            "宴会时段": time_period_val,
+            "宴会类型": party_type_val,
             "客户|宴会主题": parse_field(f.get(KEY_THEME)),
             "销售负责人": parse_field(f.get(KEY_SALES)),
             "桌数": parse_field(f.get(KEY_TABLE_NUM))
