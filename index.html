@@ -71,28 +71,42 @@ button{padding:6px 12px;border:1px solid var(--border);background:var(--card);co
 #infoCard{margin-top:12px;padding:10px;border:1px solid var(--border);border-radius:6px;background:var(--card);display:none;}
 .detail-item{border-top:1px solid var(--border);padding:6px 0;font-size:14px;line-height:1.5;}
 
-/* ====== 月场地横向表格 ====== */
-.month-table-wrap {overflow:auto;}
-#monthHallTable {border-collapse:collapse;width:100%;font-size:12px;}
-#monthHallTable th,#monthHallTable td {border:1px solid var(--border);padding:3px 2px;min-width:32px;vertical-align:top;}
-#monthHallTable th {background:var(--card);position:sticky;top:0;}
+/* ====== 月场地横向表格【修改冻结列】====== */
+.month-table-wrap {
+    overflow-x: auto;
+    overflow-y: visible;
+}
+#monthHallTable {
+    border-collapse: collapse;
+    width: auto;
+    font-size:12px;
+}
+#monthHallTable th,
+#monthHallTable td {
+    border:1px solid var(--border);
+    padding:3px 2px;
+    min-width:32px;
+    vertical-align:top;
+}
+#monthHallTable th {
+    background:var(--card);
+}
 
-/*===== 场地整列冻结：表头th + 每行数据td 都冻结left:0 =====*/
+/*===== 场地列：表头 + 全部数据行，固定冻结，宽度110px刚好6个汉字 =====*/
 .hall-name-th,
 .hall-name-td {
-    position:sticky;
-    left:0;
-    background:var(--card);
-    z-index:2;
-    width:90px;
-    min-width:90px;
-    max-width:90px;
+    position: sticky !important;
+    left: 0 !important;
+    width: 110px !important;
+    min-width: 110px !important;
+    max-width: 110px !important;
+    background: var(--card) !important;
+    z-index: 3 !important;
     text-align:left;
-    padding:4px 22px 4px 6px;
+    padding:4px 24px 4px 6px;
     white-space:nowrap;
     overflow:hidden;
     text-overflow:ellipsis;
-    position: relative;
 }
 
 /*右下角红色角标：本月预定场数，可点击 */
@@ -163,12 +177,12 @@ body{padding:8px;}
 .week-header>div{font-size:12px;padding:2px 0;}
 button{padding:5px 8px;font-size:14px;}
 .tab-btn{font-size:14px;padding:4px 10px;}
-/*手机端场地冻结列同样固定90px，保证5汉字显示*/
+/*手机端场地冻结列固定110px，保证6汉字完整显示*/
 .hall-name-th,
 .hall-name-td{
-    min-width:90px;
-    width:90px;
-    max-width:90px;
+    width:110px !important;
+    min-width:110px !important;
+    max-width:110px !important;
     padding:4px 22px 4px 6px;
     font-size:13px;
 }
@@ -633,7 +647,7 @@ renderCalendar();
 renderMonthHallTable();
 }
 
-//=====渲染月场地宴会厅横向表格【修改：整列冻结，td使用hall‑name‑td类】====
+//=====渲染月场地宴会厅横向表格====
 function renderMonthHallTable(){
 const table = $("#monthHallTable");
 const totalDay = new Date(currentYear, currentMonth, 0).getDate();
@@ -650,7 +664,6 @@ for(const hallName of HALL_FIX_LIST){
 const hallMonthEv = monthEv.filter(e=>e.hall===hallName);
 const totalBook = hallMonthEv.length;
 
-// td 增加 hall‑name‑td 实现数据行单元格冻结
 html += `<tr><td class='hall-name-td'>${hallName}<span class="hall-badge-count" data-hall="${hallName}">${totalBook}</span></td>`;
 for(let d=1;d<=totalDay;d++){
 const ds = `${currentYear}-${String(currentMonth).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
