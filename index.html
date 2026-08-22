@@ -76,22 +76,25 @@ button{padding:6px 12px;border:1px solid var(--border);background:var(--card);co
 #monthHallTable {border-collapse:collapse;width:100%;font-size:12px;}
 #monthHallTable th,#monthHallTable td {border:1px solid var(--border);padding:3px 2px;min-width:32px;vertical-align:top;}
 #monthHallTable th {background:var(--card);position:sticky;top:0;}
-/*厅名列：固定宽度容纳5个汉字，冻结列，文字超出显示省略号，relative用于角标定位*/
-.hall-name-th {
-position:sticky;
-left:0;
-background:var(--card);
-z-index:2;
-width:90px;
-min-width:90px;
-max-width:90px;
-text-align:left;
-padding:4px 22px 4px 6px;
-white-space:nowrap;
-overflow:hidden;
-text-overflow:ellipsis;
-position: relative;
+
+/*===== 场地整列冻结：表头th + 每行数据td 都冻结left:0 =====*/
+.hall-name-th,
+.hall-name-td {
+    position:sticky;
+    left:0;
+    background:var(--card);
+    z-index:2;
+    width:90px;
+    min-width:90px;
+    max-width:90px;
+    text-align:left;
+    padding:4px 22px 4px 6px;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    position: relative;
 }
+
 /*右下角红色角标：本月预定场数，可点击 */
 .hall-badge-count {
 position:absolute;
@@ -160,8 +163,9 @@ body{padding:8px;}
 .week-header>div{font-size:12px;padding:2px 0;}
 button{padding:5px 8px;font-size:14px;}
 .tab-btn{font-size:14px;padding:4px 10px;}
-/*手机端：5汉字固定宽度，冻结列*/
-.hall-name-th{
+/*手机端场地冻结列同样固定90px，保证5汉字显示*/
+.hall-name-th,
+.hall-name-td{
     min-width:90px;
     width:90px;
     max-width:90px;
@@ -629,13 +633,13 @@ renderCalendar();
 renderMonthHallTable();
 }
 
-//=====渲染月场地宴会厅横向表格【修改：红色数字放在厅名单元格右下角角标，删除末尾列】====
+//=====渲染月场地宴会厅横向表格【修改：整列冻结，td使用hall‑name‑td类】====
 function renderMonthHallTable(){
 const table = $("#monthHallTable");
 const totalDay = new Date(currentYear, currentMonth, 0).getDate();
 const monthEv = getMonthEventFromCache(currentYear, currentMonth);
 
-//表头：场地 + 1~31号日期，不再增加“本月场数”列
+//表头：场地 + 1~31号日期
 let html = "<thead><tr><th class='hall-name-th'>场地</th>";
 for(let d=1;d<=totalDay;d++){
 html += `<th>${d}</th>`;
@@ -646,7 +650,8 @@ for(const hallName of HALL_FIX_LIST){
 const hallMonthEv = monthEv.filter(e=>e.hall===hallName);
 const totalBook = hallMonthEv.length;
 
-html += `<tr><td class='hall-name-th'>${hallName}<span class="hall-badge-count" data-hall="${hallName}">${totalBook}</span></td>`;
+// td 增加 hall‑name‑td 实现数据行单元格冻结
+html += `<tr><td class='hall-name-td'>${hallName}<span class="hall-badge-count" data-hall="${hallName}">${totalBook}</span></td>`;
 for(let d=1;d<=totalDay;d++){
 const ds = `${currentYear}-${String(currentMonth).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
 const cellEv = monthEv.filter(e=>e.date===ds && e.hall===hallName);
