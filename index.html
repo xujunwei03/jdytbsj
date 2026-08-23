@@ -45,7 +45,6 @@ body{background:var(--bg);color:var(--text);padding:12px;max-width:1400px;margin
 .ctrl-bar{display:flex;gap:8px;justify-content:center;align-items:center;margin-bottom:12px;flex-wrap:wrap;}
 button{padding:6px 12px;border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:4px;cursor:pointer;font-size:16px;}
 .status-line{margin:4px 0;font-size:13px;line-height:1.4;}
-
 /*日场地原有日历*/
 .week-header{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin:8px 0 4px;}
 .week-header>div{text-align:center;font-weight:bold;padding:4px 2px;color:var(--text);font-size:13px;}
@@ -70,7 +69,6 @@ button{padding:6px 12px;border:1px solid var(--border);background:var(--card);co
 .star-corner{position:absolute;bottom:2px;left:3px;font-size:13px;color:#e67700;font-weight:bold;pointer-events:none;}
 #infoCard{margin-top:12px;padding:10px;border:1px solid var(--border);border-radius:6px;background:var(--card);display:none;}
 .detail-item{border-top:1px solid var(--border);padding:6px 0;font-size:14px;line-height:1.5;}
-
 /* ====== 月场地横向表格【修复移动端冻结列】====== */
 /*关键：滚动容器必须设置 position:relative，sticky left才能生效*/
 .month-table-wrap {
@@ -88,12 +86,18 @@ button{padding:6px 12px;border:1px solid var(--border);background:var(--card);co
 #monthHallTable td {
     border:1px solid var(--border);
     padding:3px 2px;
-    min-width:32px;
+    min-width:36px;
     vertical-align:top;
 }
-#monthHallTable th {
-    background:var(--card);
+/*月场地表头 星期+日期样式 */
+#monthHallTable th.date-header-cell{
+    line-height:1.2;
+    text-align:center;
 }
+#monthHallTable th.star-wang{background:var(--star-wang);}
+#monthHallTable th.star-ji{background:var(--star-ji);}
+#monthHallTable th.star-hao{background:var(--star-hao);}
+#monthHallTable th.star-yi{background:var(--star-yi);}
 
 /*===== 场地冻结列：表头 + 全部数据行，固定冻结，宽度92px刚好5个汉字 =====*/
 .hall-name-th,
@@ -111,7 +115,6 @@ button{padding:6px 12px;border:1px solid var(--border);background:var(--card);co
     overflow:hidden;
     text-overflow:ellipsis;
 }
-
 /*右下角红色角标：本月预定场数，可点击 */
 .hall-badge-count {
 position:absolute;
@@ -122,14 +125,12 @@ font-weight:bold;
 font-size:12px;
 cursor:pointer;
 }
-
 .cell-ev-item {
 font-size:11px;padding:1px 2px;margin:1px 0;border-radius:2px;background:#cce0ff;white-space:nowrap;
 }
 .text-wu{color:#ff7800;/*午 - 橙色*/}
 .text-wan{color:#9c27b0;/*晚 - 紫色*/}
 html [data-theme="dark"] .cell-ev-item {background:#284060;color:#e0edff;}
-
 /*月场地右下角状态信息区域*/
 .month-status-footer{
 text-align:right;
@@ -137,7 +138,6 @@ margin-top:6px;
 font-size:13px;
 line-height:1.4;
 }
-
 /* 弹窗 */
 .modal-mask {
 position:fixed;
@@ -170,7 +170,6 @@ text-align:right;
 .modal-footer button {
 padding:4px 14px;
 }
-
 /*手机适配*/
 @media(max-width:768px){
 body{padding:8px;}
@@ -203,9 +202,12 @@ button{padding:5px 8px;font-size:14px;}
     padding:12px;
     font-size:14px;
 }
+#monthHallTable th,
+#monthHallTable td {
+    min-width:34px;
+}
 }
 </style>
-
 </head>
 <body>
 <div class="tab-wrap">
@@ -263,20 +265,16 @@ skipHeader: true
 const FESHU_JSON_URL = "./feishu_data.json";
 const LOCAL_STORAGE_KEY = "feishu_banquet_cache";
 const CACHE_TTL = 5 * 60 * 1000;
-
 //=====【月场地固定宴会厅列表】=====
 const HALL_FIX_LIST = ["星眸厅","星月厅","星璨厅","星梦厅","星云厅","星享厅","雨湖厅","昭山厅","韶山厅","湘潭厅"];
-
 let starDateMap = {};
 let lunarDateMap = {};
 let fullEventList = [];
 let loading = false;
-
 //触摸滑动变量
 let touchStartX = 0;
 let touchEndX = 0;
 const SWIPE_THRESHOLD = 80;
-
 // ========== 节日配置 ==========
 const SOLAR_FESTIVAL = {
 "1-1": "元旦",
@@ -288,7 +286,6 @@ const SOLAR_FESTIVAL = {
 "6-1": "儿童节",
 "10-1": "国庆节"
 };
-
 const LUNAR_FESTIVAL = {
 "1-1": "春节",
 "1-15": "元宵节",
@@ -299,7 +296,6 @@ const LUNAR_FESTIVAL = {
 "12-8": "腊八",
 "12-30": "除夕"
 };
-
 const SOLAR_TERM = {
 "2024-09-07": "白露",
 "2024-09-23": "秋分",
@@ -358,7 +354,6 @@ const SOLAR_TERM = {
 "2026-12-07": "大雪",
 "2026-12-21": "冬至"
 };
-
 // ========== 本地缓存工具 ==========
 function saveEventCache(list){
 try{
@@ -370,7 +365,6 @@ data: list
 console.warn("浏览器阻止localStorage写入",e);
 }
 }
-
 function readEventCache(){
 try{
 const str = localStorage.getItem(LOCAL_STORAGE_KEY);
@@ -381,17 +375,14 @@ console.warn("浏览器阻止localStorage读取",e);
 return null;
 }
 }
-
 function isCacheExpired(cacheObj){
 return Date.now() - cacheObj.updateTime > CACHE_TTL;
 }
-
 function getMonthEventFromCache(y,m){
 const start = `${y}-${String(m).padStart(2,"0")}-01`;
 const end = `${y}-${String(m).padStart(2,"0")}-${new Date(y,m,0).getDate()}`;
 return fullEventList.filter(item => item.date >= start && item.date <= end);
 }
-
 //解析农历文本提取月日匹配节日
 function parseLunarMD(lunarStr){
 if(!lunarStr||lunarStr==="--")return null;
@@ -415,7 +406,6 @@ break;
 if(m&&d)return `${m}-${d}`;
 return null;
 }
-
 // ========== 星日期+农历 Excel ==========
 async function loadStarExcel() {
 const statusEl = document.getElementById("starStatus");
@@ -487,7 +477,6 @@ starMonthEl.style.color = "#d92121";
 return false;
 }
 }
-
 // ========== 宴席数据 ==========
 async function loadFeishuJson(forceRefresh = false){
 if(loading) return;
@@ -515,7 +504,6 @@ timePeriod: item["宴会时段"] || "",
 partyType: item["宴会类型"] || ""
 }
 }).filter(item => !!item.date);
-
 fullEventList = formatList;
 saveEventCache(fullEventList);
 const time = new Date().toLocaleString();
@@ -528,7 +516,6 @@ if(cacheInfoMonth){
 cacheInfoMonth.innerText = cacheText;
 cacheInfoMonth.style.color = "#0e9f6e";
 }
-
 renderCalendar();
 renderMonthHallTable();
 const loadText = `✅已同步全部宴席${fullEventList.length}条`;
@@ -546,24 +533,20 @@ console.error(err);
 loading = false;
 }
 }
-
 // ========== 节日读取 ==========
 function getSolarFestival(y,m,d){
 const k = `${m}-${d}`;
 return SOLAR_FESTIVAL[k] || "";
 }
-
 function getLunarFestival(lunarText){
 const md=parseLunarMD(lunarText);
 if(!md)return "";
 return LUNAR_FESTIVAL[md]||"";
 }
-
 function getSolarTerm(y,m,d){
 const dateStr = `${y}-${String(m).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
 return SOLAR_TERM[dateStr] || "";
 }
-
 // ========== 日历渲染 ==========
 let currentYear, currentMonth;
 let selectItem = null;
@@ -574,7 +557,6 @@ const infoCard = $("#infoCard");
 const infoText = $("#infoText");
 const hallModalMask = $("#hallModalMask");
 const hallModalContent = $("#hallModalContent");
-
 //弹窗关闭
 $("#hallModalClose").onclick = ()=>{
 hallModalMask.classList.remove("show");
@@ -584,7 +566,6 @@ if(e.target === hallModalMask){
 hallModalMask.classList.remove("show");
 }
 };
-
 /**打开厅详情弹窗 和截图2完全一样*/
 function openHallDetailModal(hallName, y, m){
 const totalDay = new Date(y,m,0).getDate();
@@ -616,7 +597,6 @@ ${freeDateList.join("<br>")}
 hallModalContent.innerHTML = html;
 hallModalMask.classList.add("show");
 }
-
 //滑动处理
 function handleTouchStart(e){
 touchStartX = e.changedTouches[0].screenX;
@@ -652,24 +632,31 @@ infoCard.style.display = "none";
 renderCalendar();
 renderMonthHallTable();
 }
-
-//=====渲染月场地宴会厅横向表格====
+//=====渲染月场地宴会厅横向表格【修改点：表头增加星期、星日期背景色】====
 function renderMonthHallTable(){
 const table = $("#monthHallTable");
 const totalDay = new Date(currentYear, currentMonth, 0).getDate();
 const monthEv = getMonthEventFromCache(currentYear, currentMonth);
-
-//表头：场地 + 1~31号日期
+const weekTextArr = ["周日","周一","周二","周三","周四","周五","周六"];
+//表头：场地 + 1~31号日期（日期换行星期，并且根据starDateMap设置背景class）
 let html = "<thead><tr><th class='hall-name-th'>场地</th>";
 for(let d=1;d<=totalDay;d++){
-html += `<th>${d}</th>`;
+const ds = `${currentYear}-${String(currentMonth).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+const dayObj = new Date(currentYear, currentMonth-1, d);
+const weekIdx = dayObj.getDay();
+const weekStr = weekTextArr[weekIdx];
+const starType = starDateMap[ds] || "";
+let thClass = "date-header-cell";
+if(starType === "星旺日") thClass += " star-wang";
+if(starType === "星吉日") thClass += " star-ji";
+if(starType === "星好日") thClass += " star-hao";
+if(starType === "星宜日") thClass += " star-yi";
+html += `<th class="${thClass}">${d}<br>${weekStr.slice(1)}</th>`;
 }
 html += `</tr></thead><tbody>`;
-
 for(const hallName of HALL_FIX_LIST){
 const hallMonthEv = monthEv.filter(e=>e.hall===hallName);
 const totalBook = hallMonthEv.length;
-
 html += `<tr><td class='hall-name-td'>${hallName}<span class="hall-badge-count" data-hall="${hallName}">${totalBook}</span></td>`;
 for(let d=1;d<=totalDay;d++){
 const ds = `${currentYear}-${String(currentMonth).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
@@ -691,7 +678,6 @@ html += `</tr>`;
 }
 html += "</tbody>";
 table.innerHTML = html;
-
 //绑定角标点击事件
 document.querySelectorAll(".hall-badge-count").forEach(el=>{
 el.onclick = ()=>{
@@ -700,12 +686,10 @@ openHallDetailModal(h, currentYear, currentMonth);
 };
 });
 }
-
 async function init(){
 const now = new Date();
 currentYear = now.getFullYear();
 currentMonth = now.getMonth() + 1;
-
 const cache = readEventCache();
 if(cache && Array.isArray(cache.data)){
 fullEventList = cache.data;
@@ -721,25 +705,19 @@ cacheInfoMonth.innerText = `本地缓存:${timeStr}`;
 cacheInfoMonth.style.color = "#0e9f6e";
 }
 }
-
 bindEvent();
-
 calendarEl.addEventListener('touchstart', handleTouchStart, {passive:true});
 calendarEl.addEventListener('touchend', handleTouchEnd, {passive:true});
-
 const pExcel = loadStarExcel();
 if(cache === null || isCacheExpired(cache)){
 loadFeishuJson(false);
 }
 await pExcel;
-
 renderCalendar();
 renderMonthHallTable();
 }
-
 function renderCalendar(){
 const eventData = getMonthEventFromCache(currentYear, currentMonth);
-
 calendarEl.innerHTML = "";
 ymEl.innerText = `${currentYear}年${currentMonth}月`;
 const first = new Date(currentYear, currentMonth - 1, 1);
@@ -747,31 +725,26 @@ const weekStart = first.getDay();
 const totalDay = new Date(currentYear, currentMonth, 0).getDate();
 const today = new Date();
 const ty = today.getFullYear(), tm = today.getMonth() + 1, td = today.getDate();
-
 const groupMap = {};
 for(const ev of eventData){
 if(!ev.date) continue;
 if(!groupMap[ev.date]) groupMap[ev.date] = [];
 groupMap[ev.date].push(ev);
 }
-
 for(let i = 0; i < weekStart; i++){
 const div = document.createElement("div");
 div.className = "day-item empty";
 calendarEl.appendChild(div);
 }
-
 for(let d = 1; d <= totalDay; d++){
 const div = document.createElement("div");
 const dateStr = `${currentYear}-${String(currentMonth).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
 const lunarShowText = lunarDateMap[dateStr] || "--";
-
 const isToday = (ty === currentYear && tm === currentMonth && td === d);
 const isSelect = selectItem && selectItem.y === currentYear && selectItem.m === currentMonth && selectItem.d === d;
 const dayEvList = groupMap[dateStr] || [];
 const dayCount = dayEvList.length;
 const starType = starDateMap[dateStr] || "";
-
 div.className = "day-item";
 if(isToday) div.classList.add("today");
 if(isSelect) div.classList.add("active");
@@ -780,11 +753,9 @@ if(starType === "星旺日") div.classList.add("star-wang");
 if(starType === "星吉日") div.classList.add("star-ji");
 if(starType === "星好日") div.classList.add("star-hao");
 if(starType === "星宜日") div.classList.add("star-yi");
-
 const festivalText = getSolarFestival(currentYear, currentMonth, d);
 const lunarFestivalText = getLunarFestival(lunarShowText);
 const termText = getSolarTerm(currentYear, currentMonth, d);
-
 const badgeHtml = dayCount > 0 ? `<div class="ev-badge">${dayCount}</div>` : "";
 let starClass = "";
 if(starType === "星旺日") starClass = "star-wang";
@@ -793,7 +764,6 @@ if(starType === "星好日") starClass = "star-hao";
 if(starType === "星宜日") starClass = "star-yi";
 const starHtml = starType ? `<div class="star-tag ${starClass}">${starType}</div>` : "";
 const cornerStarHtml = isToday ? `<div class="star-corner">★</div>` : "";
-
 div.innerHTML = `
 ${badgeHtml}
 ${cornerStarHtml}
@@ -804,7 +774,6 @@ ${lunarFestivalText ? `<div class="lunar-festival">${lunarFestivalText}</div>` :
 ${termText ? `<div class="solar-term">${termText}</div>` : ""}
 ${starHtml}
 `;
-
 div.dataset.y = currentYear;
 div.dataset.m = currentMonth;
 div.dataset.d = d;
@@ -815,7 +784,6 @@ div.onclick = () => clickDay(div, dayEvList);
 calendarEl.appendChild(div);
 }
 }
-
 // 已修改：增加宴会厅字段
 function clickDay(el, evList){
 const y = Number(el.dataset.y);
@@ -824,18 +792,14 @@ const d = Number(el.dataset.d);
 const lunar = el.dataset.lunar || "--";
 const starText = el.dataset.star || "无星日期";
 const dateStr = el.dataset.dateStr;
-
 selectItem = { y, m, d };
 const weekArr = ["日","一","二","三","四","五","六"];
 const wIdx = new Date(y, m - 1, d).getDay();
 const weekText="星期"+weekArr[wIdx];
-
 const solarFest=getSolarFestival(y,m,d);
 const lunarFest=getLunarFestival(lunar);
 const term=getSolarTerm(y,m,d);
-
 infoCard.style.display = "block";
-
 let detailHtml = "";
 if(evList.length === 0){
 detailHtml = "<div>当日暂无宴席预定</div>";
@@ -854,13 +818,11 @@ detailHtml += `
 `;
 });
 }
-
 let festBlock=[];
 if(solarFest)festBlock.push("公历节日："+solarFest);
 if(lunarFest)festBlock.push("农历节日："+lunarFest);
 if(term)festBlock.push("节气："+term);
 const festHtml=festBlock.length>0?"<div>"+festBlock.join("；")+"</div>":"";
-
 infoText.innerHTML = `
 <div>公历：${y}-${m}-${d} ${weekText}</div>
 <div>农历：${lunar}</div>
@@ -871,21 +833,17 @@ ${detailHtml}
 `;
 renderCalendar();
 }
-
 function bindEvent(){
 $("#prev").onclick = goPrevMonth;
 $("#next").onclick = goNextMonth;
-
 $("#refresh").onclick = async () => {
 await loadFeishuJson(true);
 };
-
 const themeBtn = $("#themeBtn");
 themeBtn.onclick = () => {
 const html = document.documentElement;
 html.hasAttribute("data-theme") ? (html.removeAttribute("data-theme"), themeBtn.innerText = "切换深色") : (html.setAttribute("data-theme", "dark"), themeBtn.innerText = "切换浅色");
 };
-
 //====tab标签切换事件====
 const tabBtns = document.querySelectorAll(".tab-btn");
 tabBtns.forEach(btn=>{
@@ -898,6 +856,5 @@ document.getElementById(targetTabId).classList.add("show");
 }
 })
 }
-
 init();
 </script></body></html>
